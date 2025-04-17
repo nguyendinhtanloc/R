@@ -1,0 +1,139 @@
+---
+title: "dataPreprossesing"
+output: html_document
+date: "2025-04-17"
+---
+
+
+- Load file data csv "heart_all_combined"
+
+
+```{r}
+library(readr)
+library(dplyr)
+library(tidyr)
+dataFilePreprossesing <- read_csv("heart_all_combined.csv")
+dataFilePreprossesing
+```
+
+```{r}
+glimpse(dataFilePreprossesing)
+
+# Kiểm tra tổng số NA theo cột
+colSums(is.na(dataFilePreprossesing))
+
+# Phần trăm NA mỗi cột
+sapply(dataFilePreprossesing, function(x) mean(is.na(x)) * 100)
+
+```
+Tổng quan về dữ liệu thiếu
+
+Cột	      Số NA	   %NA	      Ghi chú thêm
+age	      94	     7.2%	      Tương đối ít
+sex	      94	     7.2%     	Ít
+cp	      94	     7.2%      	Ít
+trestbps	154	     11.8%	    Có thể giữ lại
+chol    	147	     11.2%	    Có thể xử lý được
+fbs	      192	     14.7%	    Hơi cao, nhưng vẫn xử lý được
+restecg	  97	     7.4%	      Ít
+thalach	  150	     11.5%	    Trung bình
+exang	    150	     11.5%	    Trung bình
+oldpeak	  156	     11.9%	    Trung bình
+slope	    593	     45.3%	    Quá cao
+ca	      995	     76.1%	    Rất cao 
+thal	    846	     64.7%	    Rất cao
+target	  94	     7.2%	      Quan trọng, cần giữ
+
+
+```{r}
+summary_stats <- data.frame(
+  Feature = names(data),
+  Min = sapply(data, function(x) if (is.numeric(x)) min(x, na.rm = TRUE) else NA),
+  Max = sapply(data, function(x) if (is.numeric(x)) max(x, na.rm = TRUE) else NA),
+  Mean = sapply(data, function(x) if (is.numeric(x)) mean(x, na.rm = TRUE) else NA),
+  Median = sapply(data, function(x) if (is.numeric(x)) median(x, na.rm = TRUE) else NA),
+  SD = sapply(data, function(x) if (is.numeric(x)) sd(x, na.rm = TRUE) else NA)
+)
+
+summary_stats$CV <- summary_stats$SD / summary_stats$Mean
+
+print(summary_stats)
+
+
+```
+
+
+```{r}
+# Hàm điền giá trị thiếu dựa trên CV và các thông số tính toán
+handle_missing_values <- function(data, summary_stats) {
+  
+  for (col in names(data)) {
+    if (any(is.na(data[[col]]))) {
+      if (is.numeric(data[[col]])) {
+        # Lấy thông tin thống kê của cột
+        min_val <- summary_stats$Min[summary_stats$Feature == col]
+        max_val <- summary_stats$Max[summary_stats$Feature == col]
+        mean_val <- summary_stats$Mean[summary_stats$Feature == col]
+        sd_val <- summary_stats$SD[summary_stats$Feature == col]
+        cv_val <- summary_stats$CV[summary_stats$Feature == col]
+        
+        # Quy định phương pháp điền giá trị thiếu
+        if (cv_val > 0.5) {
+          lower_limit <- max(min_val, mean_val - sd_val)
+          upper_limit <- min(max_val, mean_val + sd_val)
+          data[[col]][is.na(data[[col]])] <- runif(sum(is.na(data[[col]])), lower_limit, upper_limit)
+        } else {
+          # Nếu phân tán thấp, điền giá trị bằng Median
+          median_val <- summary_stats$Median[summary_stats$Feature == col]
+          data[[col]][is.na(data[[col]])] <- median_val
+        }
+      } else {
+        # Với cột giá trị nhị phân ta đđiền mode
+        mode_val <- get_mode(data[[col]])
+        data[[col]][is.na(data[[col]])] <- mode_val
+      }
+    }
+  }
+  
+  return(data)
+}
+
+# Hàm tính mode cho cột phân loại
+get_mode <- function(v) {
+  uniqv <- unique(na.omit(v))
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+# Xử lý giá trị thiếu
+data <- handle_missing_values(data, summary_stats)
+
+# In dữ liệu sau khi xử lý
+print(data)
+
+```
+# Kiểm tra còn NAkhông
+
+```{r}
+colSums(is.na(data))
+
+```
+```{r}
+# Lưu dữ liệu đã xử lý vào một file CSV mới
+write.csv(data, "heart_data_processed.csv", row.names = FALSE)
+
+```
+```{r}
+
+```
+```{r}
+
+```
+```{r}
+
+```
+```{r}
+
+```
+```{r}
+
+```
