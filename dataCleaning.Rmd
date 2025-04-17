@@ -1,0 +1,165 @@
+---
+title: "final"
+output: html_document
+date: "2025-04-04"
+---
+1. Đọc dữ liệu đầu vào, sử dụng thư viện readr
+  - Ta có 5 file data, trong đó có 1 file dữ liệu bên trong ngăn cách nhau bởi khoảng trắng (hungarian2.data) và 4 file dữ liệu còn lại (cleveland.data, hungarian.data, switzerland.data, long-beach-va.data) ngăn cách nhau bởi dấu ","
+  - Cần chuyển đổi file hungarian.data từ ngăn cách nhau bởi khoảng trắng sang ngăn cách nhau dấu "," để khi ta kết hợp 5 file data lại không bị lỗi định dạng.
+  
+```{r}
+library(readr)
+library(tidyr)
+# Đọc file với dấu phẩy ngăn cách
+data_file1 <- read.table("cleveland.data", header = FALSE, sep = ",", fill = TRUE)
+data_file2 <- read.table("hungarian.data", header = FALSE, sep = ",", fill = TRUE)
+data_file3 <- read.table("long-beach-va.data", header = FALSE, sep = ",", fill = TRUE)
+data_file4 <- read.table("switzerland.data", header = FALSE, sep = ",", fill = TRUE)
+
+# Đọc file với khoảng trắng ngăn cách
+data_file5 <- read.table("hungarian2.data", header = FALSE, sep = "", fill = TRUE)
+
+# Tạo danh sách các dataframe
+dfList <- list(data_file1 = data_file1, data_file2 = data_file2, data_file3 = data_file3, data_file4 = data_file4, data_file5 = data_file5)
+
+# Kiểm tra dữ liệu đã đọc
+
+for (df_name in names(dfList)) {
+  df <- dfList[[df_name]]
+  cat("Tên dataframe:", df_name, "\n")
+  print(head(df))
+  cat("Kích thước:", dim(df), "\n")
+  cat("--------------------------\n")
+}
+
+```
+2. Lưu 5 file data thành dạng table file.csv
+- Tạo một list df để lưu 5 file.csv và dùng vòng lặp để lưu 5 file.data thành dạng table file.csv
+- Tiếp tục gán 5 file.csv đó vào lại dfList
+```{r}
+# Lặp qua danh sách để ghi từng dataframe thành file CSV
+for (df_name in names(dfList)) {
+  write.table(dfList[[df_name]], paste0(df_name, ".csv"), sep = ",", row.names = FALSE, col.names = FALSE)
+}
+dfList_csv <- list(
+  data_file1 = read.csv("data_file1.csv", header = FALSE, sep = ","),
+  data_file2 = read.csv("data_file2.csv", header = FALSE, sep = ","),
+  data_file3 = read.csv("data_file3.csv", header = FALSE, sep = ","),
+  data_file4 = read.csv("data_file4.csv", header = FALSE, sep = ","),
+  data_file5 = read.csv("data_file5.csv", header = FALSE, sep = ",")
+)
+```
+
+3. Ta sẽ kiểm tra số lượng cột
+  - Trước tiên sẽ kiểm tra số lượng cột, chiều dài vector
+  - Tạo một vector colnames chứa tên cột cần cho việc phân tích: age", "sex", "cp", "trestbps", "chol", "fbs",
+              "restecg", "thalach", "exang", "oldpeak",
+              "slope", "ca", "thal", "target"
+    + Yêu cầu các cột có kiểu dữ liệu tương ứng (1, 2, 3, 7, 14) là int và (4:6, 8:13) là kiểu char
+  - Nếu kiểm tra số lượng col của từng file.csv thỏa với colnames thì gán tên các colnames cho file.csv
+  - Ta sẽ tạo thêm một file tổng hợp từ 5 file.csv trước đó.
+```{r}
+# Kiểm tra số lượng cột của từng df
+for (df in dfList) {
+  print(ncol(df))   # Với dataframe (số cột)
+}
+
+```
+4.
+- Sau khi kiểm tra số cột ta thấy được có dfList[1], dfList[2] là data về cleveland, hungarian chỉ có 1 cột.
+- Phải đảm bảo dataFrame đủ 14 cột tương ứng với colnames, ta sẽ chỉnh sửa lại dfList[1], dfList[2].
+- dfList[1] và dfList[2] (đại diện data_file1 và data_file2) chỉ có 1 cột.
+- Các giá trị bị hiểu sai vì dấu phẩy , có thể là dấu phân cách hoặc dấu thập phân.
+- Một số dòng có chứa dấu ?, gây lỗi khi chuyển đổi kiểu dữ liệu.
+- Có thể do data file1 là dạng số thập phân kiểu 
+vd head(1) của dfList[1] là 63.0,1.0,1.0,145.0,233.0,1.0,2.0,150.0,0.0,2.3,3.0,0.0,6.0,0 vấn đề ở các con số mỗi dấu phẩy như một số thập phân.
+và head(1) của dfList[2] là 28,1,2,130,132,0,2,185,0,0,?,?,?,0 khi ta dùng read_csv("hungarian.data", ...), R vẫn hiểu toàn bộ dòng là một chuỗi duy nhất, vì file không có định dạng chuẩn về dấu xuống dòng hoặc chứa ký tự đặ
+nên không đọc được.
+- Ta giải uyết như sau:
+  + Đọc lại file.data, sử dụng thư viện dplyr,tidyr tách thủ công bằng cách sử dụng hàm separate.
+  + Tách các giá trị bởi dấu phẩy thành các cột riêng biệt.
+```{r}
+# Tách cột cho dfList[1] (data_file1)
+data_file1 <- dfList[[1]] %>%
+  separate(col = 1, into = col_names, sep = ",", convert = TRUE, fill = "right")
+
+# Tách cột cho dfList[2] (data_file2)
+data_file2 <- dfList[[2]] %>%
+  separate(col = 1, into = col_names, sep = ",", convert = TRUE, fill = "right")
+
+# In ra để kiểm tra
+data_file1
+data_file2
+
+```
+5. Đặt tên cột theo thứ tự lần lượt cho các DF như sau:
+```{r}
+# Đặt tên cột
+colnames <- c("age", "sex", "cp", "trestbps", "chol", "fbs",
+              "restecg", "thalach", "exang", "oldpeak",
+              "slope", "ca", "thal", "target")
+
+data_file1 <- data_file1[, 1:14]
+data_file2 <- data_file2[, 1:14]
+data_file3 <- data_file3[, 1:14]
+data_file4 <- data_file4[, 1:14]
+data_file5 <- data_file5[, 1:14]
+
+colnames(data_file1) <- colnames
+colnames(data_file2) <- colnames
+colnames(data_file3) <- colnames
+colnames(data_file4) <- colnames
+colnames(data_file5) <- colnames
+
+```
+6. KIểm tra kiểu dữ liệu của các data
+  - Dùng hàm str(data) để kiểm tra từng cột kiểu dữ liệu như thế nào
+  - uan sát ta thấy được ở các df các kiểu dữ liệu rất khác nhau lẫn lộn giữa int, char. Ta sẽ đưa tất cả cột về kiểu numberic bao gồm int và float.
+  - Tạo 1 hàm chuẩn hóa dữ liệu và áp dụng cho các dữ liệu trên.
+```{r}
+
+library(dplyr)
+
+replace_invalid_values <- function(df) {
+  df[df == "?" | df == "-9"] <- NA  # Thay giá trị không hợp lệ thành NA
+  return(df)
+}
+
+# Áp dụng hàm này cho từng dataframe
+data_file1 <- replace_invalid_values(data_file1)
+data_file2 <- replace_invalid_values(data_file2)
+data_file3 <- replace_invalid_values(data_file3)
+data_file4 <- replace_invalid_values(data_file4)
+data_file5 <- replace_invalid_values(data_file5)
+
+library(dplyr)
+
+convert_to_numeric <- function(df) {
+  df <- df %>%
+    mutate_all(as.numeric)  # Chuyển tất cả các cột sang kiểu numeric
+  return(df)
+}
+
+# Áp dụng hàm cho từng dataframe
+data_file1 <- convert_to_numeric(data_file1)
+data_file2 <- convert_to_numeric(data_file2)
+data_file3 <- convert_to_numeric(data_file3)
+data_file4 <- convert_to_numeric(data_file4)
+data_file5 <- convert_to_numeric(data_file5)
+
+str(data_file1)
+str(data_file2)
+str(data_file3)
+str(data_file4)
+str(data_file5)
+```
+7. Tạo một file heart_all_combined.csv để lưu trữ 5 file data.
+```{r}
+
+# Gộp lại
+combined_data <- bind_rows(data_file1, data_file2, data_file3, data_file4, data_file5)
+
+# Lưu ra file csv tổng
+write.csv(combined_data, "heart_all_combined.csv", row.names = FALSE)
+
+```
