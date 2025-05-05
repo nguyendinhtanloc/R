@@ -1,0 +1,271 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-05-04"
+---
+
+```{r }
+# Cài đặt các thư viện cần thiết nếu chưa có
+
+
+# Load các thư viện
+library(tidyverse)
+library(caret)
+library(randomForest)
+library(gbm)
+library(pROC)
+library(ggplot2)
+
+# 1. Đọc dữ liệu
+heart_data <- read.csv("heart.csv")
+
+# Kiểm tra cấu trúc dữ liệu
+str(heart_data)
+summary(heart_data)
+
+# Kiểm tra giá trị NA
+sum(is.na(heart_data))
+```
+```{r }
+# 2. Chuẩn bị dữ liệu cho mô hình
+# Lưu biến mục tiêu dưới dạng số cho GBM
+heart_data$target_numeric <- heart_data$target
+
+# Chuyển đổi biến mục tiêu thành yếu tố cho các mô hình khác
+heart_data$target <- as.factor(heart_data$target)
+```
+```{r }
+# 3. Khám phá dữ liệu
+# Hiển thị phân bố của biến mục tiêu
+table(heart_data$target)
+prop.table(table(heart_data$target))
+```
+```{r }
+# Biểu đồ phân bố một số biến quan trọng
+par(mfrow = c(2, 2))
+hist(heart_data$age, main = "Phân bố tuổi", xlab = "Tuổi")
+boxplot(age ~ target, data = heart_data, main = "Tuổi theo nhóm bệnh tim")
+boxplot(chol ~ target, data = heart_data, main = "Cholesterol theo nhóm bệnh tim")
+boxplot(thalach ~ target, data = heart_data, main = "Nhịp tim tối đa theo nhóm bệnh tim")
+```
+```{r }
+# 4. Chia dữ liệu thành tập huấn luyện và tập kiểm tra (80% - 20%)
+set.seed(123) # Đặt seed để kết quả có thể tái tạo
+train_index <- createDataPartition(heart_data$target, p = 0.8, list = FALSE)
+train_data <- heart_data[train_index, ]
+test_data <- heart_data[-train_index, ]
+
+# Kiểm tra phân phối nhãn sau khi chia tập dữ liệu
+table(train_data$target)
+table(test_data$target)
+```
+```{r }
+# 5. Xây dựng các mô hình
+
+# 5.1 Mô hình Hồi quy Logistic
+log_model <- glm(target ~ age + sex + cp + trestbps + chol + fbs + restecg + 
+                 thalach + exang + oldpeak + slope + ca + thal, 
+                 data = train_data, family = "binomial")
+summary(log_model)
+
+# Dự đoán trên tập kiểm tra
+log_pred_prob <- predict(log_model, test_data, type = "response")
+log_pred_class <- ifelse(log_pred_prob > 0.5, 1, 0)
+log_pred_class <- factor(log_pred_class, levels = levels(test_data$target))
+
+# Đánh giá mô hình logistic
+log_cm <- confusionMatrix(log_pred_class, test_data$target)
+log_roc <- roc(as.numeric(test_data$target) - 1, log_pred_prob)
+log_auc <- auc(log_roc)
+print(log_cm)
+```
+```{r }
+# 5.2 Mô hình Random Forest
+rf_model <- randomForest(target ~ age + sex + cp + trestbps + chol + fbs + restecg + 
+                        thalach + exang + oldpeak + slope + ca + thal, 
+                        data = train_data, ntree = 500, importance = TRUE)
+print(rf_model)
+
+# Dự đoán trên tập kiểm tra
+rf_pred_class <- predict(rf_model, test_data)
+rf_pred_prob <- predict(rf_model, test_data, type = "prob")[,2]
+
+# Đánh giá mô hình Random Forest
+rf_cm <- confusionMatrix(rf_pred_class, test_data$target)
+rf_roc <- roc(as.numeric(test_data$target) - 1, rf_pred_prob)
+rf_auc <- auc(rf_roc)
+print(rf_cm)
+
+```
+```{r }
+# 5.3 Mô hình Gradient Boosting - Chú ý sử dụng biến target_numeric thay vì target
+gbm_model <- gbm(target_numeric ~ age + sex + cp + trestbps + chol + fbs + restecg + 
+                thalach + exang + oldpeak + slope + ca + thal, 
+                data = train_data,
+                distribution = "bernoulli",
+                n.trees = 500,
+                interaction.depth = 3,
+                shrinkage = 0.1,
+                cv.folds = 5,
+                n.cores = 1,
+                verbose = FALSE)
+#summary(gbm_model)
+
+# Tìm số lượng cây tối ưu dựa trên kết quả CV
+best_iter <- gbm.perf(gbm_model, method = "cv", plot.it = TRUE)
+print(paste("Số lượng cây tối ưu:", best_iter))
+
+# Dự đoán trên tập kiểm tra
+gbm_pred_prob <- predict(gbm_model, test_data, n.trees = best_iter, type = "response")
+gbm_pred_class <- ifelse(gbm_pred_prob > 0.5, 1, 0)
+gbm_pred_class <- factor(gbm_pred_class, levels = levels(test_data$target))
+
+# Đánh giá mô hình Gradient Boosting
+gbm_cm <- confusionMatrix(gbm_pred_class, test_data$target)
+gbm_roc <- roc(as.numeric(test_data$target) - 1, gbm_pred_prob)
+gbm_auc <- auc(gbm_roc)
+print(gbm_cm)
+```
+```{r }
+# 6. So sánh kết quả của ba mô hình
+
+# Tạo bảng so sánh
+models_comparison <- data.frame(
+  Model = c("Logistic Regression", "Random Forest", "Gradient Boosting"),
+  Accuracy = c(log_cm$overall["Accuracy"], 
+               rf_cm$overall["Accuracy"], 
+               gbm_cm$overall["Accuracy"]),
+  Sensitivity = c(log_cm$byClass["Sensitivity"], 
+                  rf_cm$byClass["Sensitivity"], 
+                  gbm_cm$byClass["Sensitivity"]),
+  Specificity = c(log_cm$byClass["Specificity"], 
+                  rf_cm$byClass["Specificity"], 
+                  gbm_cm$byClass["Specificity"]),
+  AUC = c(log_auc, rf_auc, gbm_auc)
+)
+
+print(models_comparison)
+```
+```{r }
+# 7. Vẽ đường cong ROC cho cả ba mô hình
+roc_plot <- ggroc(list(Logistic = log_roc, RandomForest = rf_roc, GradientBoosting = gbm_roc)) +
+  theme_minimal() +
+  ggtitle("So sánh các đường cong ROC") +
+  geom_abline(intercept = 1, slope = 1, color = "darkgrey", linetype = "dashed") +
+  scale_color_manual(values = c("Logistic" = "blue", "RandomForest" = "red", "GradientBoosting" = "green"),
+                    labels = c(paste("Logistic (AUC =", round(log_auc, 3), ")"),
+                               paste("Random Forest (AUC =", round(rf_auc, 3), ")"),
+                               paste("Gradient Boosting (AUC =", round(gbm_auc, 3), ")"))) +
+  labs(color = "Mô hình")
+
+print(roc_plot)
+
+# Hoặc sử dụng base plot của R
+plot(log_roc, col = "blue", main = "So sánh các đường cong ROC")
+plot(rf_roc, col = "red", add = TRUE)
+plot(gbm_roc, col = "green", add = TRUE)
+legend("bottomright", 
+       legend = c(paste("Logistic (AUC =", round(log_auc, 3), ")"),
+                  paste("Random Forest (AUC =", round(rf_auc, 3), ")"),
+                  paste("Gradient Boosting (AUC =", round(gbm_auc, 3), ")")),
+       col = c("blue", "red", "green"),
+       lwd = 2)
+```
+```{r }
+# 8. Vẽ biểu đồ so sánh độ chính xác của các mô hình
+ggplot(models_comparison, aes(x = reorder(Model, Accuracy), y = Accuracy, fill = Model)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "So sánh độ chính xác của các mô hình",
+       y = "Độ chính xác", 
+       x = "Mô hình") +
+  geom_text(aes(label = round(Accuracy, 3)), vjust = -0.5) +
+  theme(legend.position = "none") +
+  ylim(0, 1)
+```
+```{r }
+# 9. Tầm quan trọng của các biến
+# 9.1 Trong Random Forest
+importance_rf <- importance(rf_model)
+varImpPlot(rf_model, main = "Tầm quan trọng của các biến trong Random Forest")
+```
+```{r }
+# 9.2 Trong Gradient Boosting
+importance_gbm <- summary(gbm_model, n.trees = best_iter, plotit = TRUE)
+importance_gbm_df <- as.data.frame(importance_gbm)
+colnames(importance_gbm_df) <- c("Variable", "Relative_Influence")
+
+ggplot(importance_gbm_df, aes(x = reorder(Variable, Relative_Influence), y = Relative_Influence)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Tầm quan trọng của các biến trong Gradient Boosting",
+       x = "Biến",
+       y = "Ảnh hưởng tương đối")
+```
+```{r }
+# 10. Lưu mô hình để sử dụng sau này
+saveRDS(log_model, "logistic_model.rds")
+saveRDS(rf_model, "random_forest_model.rds")
+saveRDS(gbm_model, "gradient_boosting_model.rds")
+```
+```{r }
+# 11. Kết hợp các dự đoán để tăng hiệu suất (ensemble)
+# Tạo một mô hình ensemble đơn giản bằng cách lấy trung bình xác suất
+ensemble_pred_prob <- (log_pred_prob + rf_pred_prob + gbm_pred_prob) / 3
+ensemble_pred_class <- ifelse(ensemble_pred_prob > 0.5, 1, 0)
+ensemble_pred_class <- factor(ensemble_pred_class, levels = levels(test_data$target))
+```
+```{r }
+# Đánh giá mô hình ensemble
+ensemble_cm <- confusionMatrix(ensemble_pred_class, test_data$target)
+ensemble_roc <- roc(as.numeric(test_data$target) - 1, ensemble_pred_prob)
+ensemble_auc <- auc(ensemble_roc)
+
+# Thêm vào bảng so sánh
+models_comparison <- rbind(models_comparison,
+                          c("Ensemble", 
+                            ensemble_cm$overall["Accuracy"],
+                            ensemble_cm$byClass["Sensitivity"],
+                            ensemble_cm$byClass["Specificity"],
+                            ensemble_auc))
+
+print(models_comparison)
+```
+```{r }
+# Cập nhật biểu đồ ROC với mô hình ensemble
+plot(log_roc, col = "blue", main = "So sánh các đường cong ROC")
+plot(rf_roc, col = "red", add = TRUE)
+plot(gbm_roc, col = "green", add = TRUE)
+plot(ensemble_roc, col = "purple", add = TRUE)
+legend("bottomright", 
+       legend = c(paste("Logistic (AUC =", round(log_auc, 3), ")"),
+                  paste("Random Forest (AUC =", round(rf_auc, 3), ")"),
+                  paste("Gradient Boosting (AUC =", round(gbm_auc, 3), ")"),
+                  paste("Ensemble (AUC =", round(ensemble_auc, 3), ")")),
+       col = c("blue", "red", "green", "purple"),
+       lwd = 2)
+
+
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
