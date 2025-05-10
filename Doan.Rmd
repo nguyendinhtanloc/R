@@ -1,0 +1,234 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-05-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+heart <- data <- read.csv("heart.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+```
+
+
+```{r}
+# Biểu đồ 1: Phân bố độ tuổi (Age) theo giới tính (Sex)
+# Load required library
+library(ggplot2)
+
+# Create the histogram plot
+ggplot(data = heart, aes(x = age, fill = factor(sex))) +
+  geom_histogram(binwidth = 5, position = "dodge", alpha = 0.7) +
+  scale_fill_manual(values = c("blue", "red"), labels = c("Female", "Male")) +
+  labs(title = "Age Distribution by Sex",
+       x = "Age",
+       y = "Count",
+       fill = "Sex") +
+  theme_minimal()
+```
+```{r}
+# # Phân tích biểu đồ:
+# Mô tả: Biểu đồ histogram này hiển thị phân bố độ tuổi của các bệnh nhân trong tập dữ liệu, được chia thành hai nhóm theo giới tính (Nam và Nữ). Trục x biểu diễn độ tuổi (age),  trục y biểu diễn số lượng bệnh nhân (count). Mỗi cột được tô màu khác nhau: màu đỏ cho Nam (sex = 1) và màu xanh lam cho Nữ (sex = 0). Các cột được đặt cạnh nhau để dễ so sánh.
+# Quan sát:
+# Độ tuổi của bệnh nhân dao động từ khoảng 29 đến 77 tuổi.
+# Nhóm tuổi phổ biến nhất cho cả Nam và Nữ nằm trong khoảng 50-60 tuổi, với số lượng Nam (màu đỏ) thường cao hơn Nữ (màu xanh) ở hầu hết các nhóm tuổi.
+# Có một số lượng lớn Nam trong nhóm tuổi 55-60, trong khi Nữ có số lượng ít hơn ở cùng nhóm tuổi này.
+# Ở nhóm tuổi trẻ hơn (dưới 40 tuổi) và lớn hơn (trên 70 tuổi), số lượng bệnh nhân giảm đáng kể, và Nam vẫn chiếm ưu thế hơn Nữ.
+# Kết luận:
+# Nam giới có xu hướng chiếm đa số trong tập dữ liệu này, đặc biệt ở các nhóm tuổi trung niên (40-60 tuổi), có thể cho thấy Nam giới ở độ tuổi này dễ gặp các vấn đề về tim mạch hơn Nữ giới.
+# Sự chênh lệch về số lượng giữa Nam và Nữ có thể phản ánh rằng Nam giới có nguy cơ cao hơn hoặc được ghi nhận nhiều hơn trong các nghiên cứu về bệnh tim.
+# Độ tuổi trung niên (50-60) là nhóm tuổi có nguy cơ cao nhất về các vấn đề tim mạch trong tập dữ liệu này, điều này phù hợp với thực tế y khoa rằng các bệnh tim mạch thường xuất hiện nhiều hơn ở độ tuổi này.
+```
+
+
+```{r}
+# Biểu đồ 2: Mối quan hệ giữa Cholesterol (Chol) và Huyết áp nghỉ (Trestbps) theo tình trạng bệnh tim (Target)
+# Create the scatter plot
+ggplot(data = heart, aes(x = trestbps, y = chol, color = factor(target))) +
+  geom_point(size = 3, alpha = 0.6) +
+  scale_color_manual(values = c("blue", "red"), labels = c("No Heart Disease", "Heart Disease")) +
+  labs(title = "Cholesterol vs Resting Blood Pressure by Target",
+       x = "Resting Blood Pressure (mm Hg)",
+       y = "Cholesterol (mg/dl)",
+       color = "Target") +
+  theme_minimal()
+```
+
+```{r}
+# Phân tích biểu đồ
+# Mô tả: Biểu đồ này là một scatter plot, trong đó trục x biểu diễn huyết áp nghỉ (trestbps, đơn vị mm Hg), trục y biểu diễn mức cholesterol (chol, đơn vị mg/dl). Mỗi điểm trên biểu đồ đại diện cho một bệnh nhân, và màu sắc của điểm thể hiện tình trạng bệnh tim: màu đỏ cho bệnh nhân có bệnh tim (target = 1) và màu xanh lam cho bệnh nhân không có bệnh tim (target = 0).
+# Quan sát:
+# Huyết áp nghỉ dao động từ khoảng 90 đến 200 mm Hg, trong khi mức cholesterol dao động từ khoảng 100 đến 600 mg/dl.
+# Không có sự phân cụm rõ rệt giữa hai nhóm (có bệnh và không có bệnh) dựa trên huyết áp nghỉ và mức cholesterol. Cả hai nhóm đều phân bố khá rải rác.
+# Một số bệnh nhân có mức cholesterol rất cao (trên 400 mg/dl), và trong số đó, có cả bệnh nhân có bệnh tim (màu đỏ) và không có bệnh tim (màu xanh).
+# Tương tự, một số bệnh nhân có huyết áp nghỉ cao (trên 195 mm Hg) cũng thuộc cả hai nhóm.
+# Có một số điểm bất thường, ví dụ, một bệnh nhân có mức cholesterol lên tới 564 mg/dl, thuộc nhóm không có bệnh tim (màu xanh).
+# Kết luận:
+# Mối quan hệ giữa huyết áp nghỉ và mức cholesterol không cho thấy một mô hình rõ ràng liên quan đến tình trạng bệnh tim. Điều này có thể chỉ ra rằng các yếu tố này không phải là yếu tố duy nhất hoặc mạnh mẽ nhất để dự đoán bệnh tim trong tập dữ liệu này.
+# Một số bệnh nhân có mức cholesterol hoặc huyết áp cao nhưng không có bệnh tim, điều này có thể cho thấy các yếu tố khác (như lối sống, di truyền, hoặc các biến số khác trong dataset như exang, oldpeak) có thể đóng vai trò quan trọng hơn.
+# Cần phân tích sâu hơn với các biến số khác hoặc sử dụng các mô hình dự đoán (như hồi quy logistic) để hiểu rõ hơn các yếu tố ảnh hưởng đến bệnh tim.
+# Dữ liệu có thể có một số giá trị ngoại lai (như cholesterol 564 mg/dl), cần kiểm tra thêm để đảm bảo tính chính xác của dữ liệu.
+```
+
+
+```{r}
+# Biểu đồ 3: Boxplot của độ giãn ST (oldpeak) theo tình trạng đau thắt ngực do gắng sức (exang)
+# Create the boxplot
+ggplot(data = heart, aes(x = factor(exang), y = oldpeak, fill = factor(exang))) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("blue", "red"), labels = c("No Angina", "Angina")) +
+  labs(title = "ST Depression (Oldpeak) by Exercise-Induced Angina (Exang)",
+       x = "Exercise-Induced Angina (0 = No, 1 = Yes)",
+       y = "ST Depression (oldpeak)",
+       fill = "Exang") +
+  theme_minimal()
+```
+
+
+```{r}
+# Quan sát
+# Nhóm không có đau thắt ngực (ex sœur = 0, màu xanh):
+# Trung vị (median) của độ giãn ST rất thấp, khoảng 0.5.
+# Phân vị thứ nhất (Q1) và phân vị thứ ba (Q3) nằm trong khoảng 0 đến 1.0, cho thấy phần lớn dữ liệu tập trung ở mức độ giãn ST thấp.
+# Phạm vi tổng thể (không tính ngoại lai) dao động từ 0 đến khoảng 2.5.
+# Có nhiều giá trị ngoại lai (outliers) ở mức cao hơn (từ 3.0 đến 5.0), được biểu thị bằng các điểm chấm, cho thấy một số bệnh nhân không có đau thắt ngực nhưng vẫn có độ giãn ST bất thường.
+# Nhóm có đau thắt ngực (exang = 1, màu đỏ):
+# Trung vị của độ giãn ST cao hơn đáng kể, khoảng 1.5.
+# Phân vị thứ nhất (Q1) và phân vị thứ ba (Q3) nằm trong khoảng 0.5 đến 2.5, cho thấy phân bố rộng hơn và mức độ giãn ST trung bình cao hơn.
+# Phạm vi tổng thể dao động từ 0 đến khoảng 4.0, với một số giá trị ngoại lai ở mức cao (lên đến 6.2).
+# Nhóm này có ít ngoại lai hơn so với nhóm không có đau thắt ngực, nhưng các giá trị ngoại lai lại ở mức rất cao (như 5.8).
+# So sánh giữa hai nhóm:
+# Nhóm có đau thắt ngực (exang = 1) có độ giãn ST trung bình cao hơn rõ rệt so với nhóm không có đau thắt ngực (exang = 0).
+# Phân vị thứ ba (Q3) của nhóm có đau thắt ngực cao hơn nhiều (khoảng 2.5) so với nhóm không có đau thắt ngực (khoảng 1.0), cho thấy sự khác biệt rõ rệt trong mức độ giãn ST.
+# Nhóm không có đau thắt ngực có nhiều giá trị ngoại lai hơn, đặc biệt ở mức 3.0-5.0, trong khi nhóm có đau thắt ngực có ít ngoại lai hơn nhưng giá trị ngoại lai cao nhất (5.8) lại thuộc về nhóm này.
+# Kết luận:
+# Mối quan hệ giữa exang và oldpeak:
+# Đau thắt ngực do gắng sức (exang = 1) có liên quan mạnh mẽ đến mức độ giãn ST (oldpeak) cao hơn. Điều này phù hợp với thực tế y khoa, vì đau thắt ngực trong lúc tập luyện thường là dấu hiệu của thiếu máu cơ tim, dẫn đến sự thay đổi trong điện tâm đồ (ECG) như độ giãn ST tăng.
+# Nhóm không có đau thắt ngực (exang = 0) có độ giãn ST trung bình thấp hơn, phản ánh tình trạng tim mạch ổn định hơn trong lúc gắng sức. Tuy nhiên, sự hiện diện của nhiều giá trị ngoại lai (lên đến 5.0 hoặc 6.2) trong nhóm này cho thấy một số bệnh nhân không có triệu chứng đau thắt ngực vẫn có thể có vấn đề tim mạch tiềm ẩn.
+# Ý nghĩa lâm sàng:
+# Độ giãn ST cao hơn ở nhóm có đau thắt ngực do gắng sức là một dấu hiệu quan trọng, có thể chỉ ra bệnh mạch vành hoặc các vấn đề tim mạch nghiêm trọng. Các bệnh nhân có exang = 1 và oldpeak cao (trên 2.5) nên được ưu tiên kiểm tra thêm (như chụp mạch vành) để đánh giá mức độ nghiêm trọng.
+# Giá trị ngoại lai cao (như 5.8) trong nhóm có đau thắt ngực có thể đại diện cho các trường hợp bệnh nặng, cần can thiệp y tế ngay lập tức.
+# Trong nhóm không có đau thắt ngực, các giá trị ngoại lai cao (3.0-5.0) cho thấy một số bệnh nhân có thể đang ở giai đoạn sớm của bệnh tim nhưng chưa có triệu chứng rõ ràng. Điều này nhấn mạnh tầm quan trọng của việc theo dõi thường xuyên, ngay cả khi không có triệu chứng đau thắt ngực.
+# Lối sống và di truyền:
+# Đau thắt ngực do gắng sức và độ giãn ST cao có thể bị ảnh hưởng bởi lối sống (như thiếu vận động, hút thuốc, chế độ ăn nhiều chất béo) hoặc yếu tố di truyền (tiền sử gia đình mắc bệnh tim). Những bệnh nhân có exang = 1 và oldpeak cao nên được khuyến nghị thay đổi lối sống (tăng cường vận động nhẹ nhàng, giảm căng thẳng, kiểm soát chế độ ăn) và kiểm tra di truyền nếu cần.
+# Ngay cả với nhóm không có đau thắt ngực, các giá trị ngoại lai cao của oldpeak cho thấy cần chú ý đến các yếu tố nguy cơ tiềm ẩn (như huyết áp cao, cholesterol cao, hoặc tiền sử gia đình), vì chúng có thể góp phần làm tăng nguy cơ bệnh tim trong tương lai.
+```
+
+
+```{r}
+# Biểu đồ 4: Số mạch máu bị hẹp (ca) theo tình trạng bệnh tim (target)
+# Create the boxplot
+ggplot(data = heart, aes(x = factor(target), y = ca, fill = factor(target))) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("blue", "red"), labels = c("No Heart Disease", "Heart Disease")) +
+  labs(title = "Number of Narrowed Blood Vessels (ca) by Heart Disease Status",
+       x = "Heart Disease (0 = No, 1 = Yes)",
+       y = "Number of Narrowed Blood Vessels (ca)",
+       fill = "Target") +
+  theme_minimal()
+```
+
+```{r}
+# Nhóm không có bệnh tim (target = 0, màu xanh):
+# Trung vị (median) của số mạch máu bị hẹp là khoảng 1 (dựa trên đường nằm ngang trong hộp).
+# Phân vị thứ nhất (Q1) và phân vị thứ ba (Q3) nằm trong khoảng 0 đến 2, với phạm vi tổng thể từ 0 đến 4.
+# Có nhiều giá trị ngoại lai (outliers) ở mức 3 và 4, cho thấy một số bệnh nhân không có bệnh tim vẫn có hẹp mạch máu đáng kể.
+# Nhóm có bệnh tim (target = 1, màu đỏ):
+# Trung vị của số mạch máu bị hẹp là 0 (dựa trên đường nằm ngang trong hộp, nằm gần đáy hộp).
+# Phân vị thứ nhất (Q1) và phân vị thứ ba (Q3) nằm trong khoảng 0 đến 1, với phạm vi tổng thể từ 0 đến 3.
+# Có một số giá trị ngoại lai ở mức 3 và 4, nhưng ít hơn so với nhóm không có bệnh tim.
+# Kết luận
+# Dựa trên biểu đồ này, có vẻ như mối quan hệ giữa số lượng mạch máu bị hẹp (ca) và tình trạng bệnh tim không tuân theo giả định ban đầu rằng "số mạch máu bị hẹp càng nhiều, tỷ lệ mắc bệnh tim càng cao". Thay vào đó, nhóm không có bệnh tim (target = 0) có trung vị và phân vị cao hơn so với nhóm có bệnh tim (target = 1), điều này có thể phản ánh một số bất thường trong dữ liệu hoặc cách phân loại bệnh tim trong tập dữ liệu.
+# Tuy nhiên, điều này không nhất quán với thực tế y khoa, vì hẹp mạch máu (đặc biệt là hẹp nhiều mạch) thường liên quan đến bệnh tim. Có thể tập dữ liệu heart.csv có cách ghi nhận target hoặc ca không hoàn toàn phản ánh chính xác mối quan hệ này, hoặc có các yếu tố khác (như mức độ hẹp, triệu chứng lâm sàng) chưa được xem xét.
+```
+
+
+```{r}
+# Biểu đồ 5: Ma trận tương quan giữa các biến trong tập dữ liệu
+# Load required library
+library(corrplot)
+
+# Calculate the correlation matrix
+cor_matrix <- cor(heart, use = "complete.obs")
+
+# Create the correlation heatmap
+corrplot(cor_matrix, method = "color", type = "upper", 
+         tl.col = "black", tl.srt = 45, 
+         addCoef.col = "black", number.cex = 0.7,
+         title = "Correlation Matrix of Heart Dataset Variables",
+         mar = c(0, 0, 1, 0))
+```
+
+```{r}
+# Các đặc trưng quan trọng:
+# Các biến có tương quan mạnh với target bao gồm cp (0.43), thalach (0.42), exang (-0.44), oldpeak (-0.44), ca (-0.38), thal (-0.34), và slope (0.35). Đây là những đặc trưng quan trọng để dự đoán bệnh tim và nên được ưu tiên trong việc xây dựng mô hình.
+# Các biến như age (-0.23), sex (-0.28), trestbps (-0.14), chol (-0.10), fbs (0.04), và restecg (0.13) có tương quan yếu với target, có thể không đóng vai trò lớn trong việc dự đoán bệnh tim nếu chỉ dựa vào mối quan hệ tuyến tính.
+# Tối ưu hóa mô hình dự đoán:
+# Đa cộng tuyến (multicollinearity): Một số cặp biến có tương quan mạnh với nhau, ví dụ:
+# oldpeak và slope (-0.58): Cần cân nhắc loại bỏ một trong hai biến hoặc sử dụng kỹ thuật giảm chiều (như PCA) để tránh hiện tượng đa cộng tuyến trong các mô hình hồi quy.
+# thalach và exang (-0.35): Cũng cần chú ý, vì cả hai đều có tương quan mạnh với target nhưng lại liên quan chặt chẽ với nhau.
+# Các biến có tương quan rất yếu với target (như fbs, restecg) có thể được loại bỏ nếu chúng không cải thiện hiệu suất mô hình, giúp giảm độ phức tạp và tránh overfitting.
+# Nên thử nghiệm các mô hình phi tuyến (như Random Forest hoặc XGBoost) vì ma trận tương quan chỉ đo lường mối quan hệ tuyến tính, trong khi một số mối quan hệ có thể là phi tuyến.
+# Hỗ trợ quyết định lâm sàng:
+# Các biến như cp, exang, oldpeak, ca, và thal có thể được sử dụng để hỗ trợ bác sĩ trong việc đánh giá nguy cơ bệnh tim:
+# Bệnh nhân có cp cao (đau ngực đặc trưng), exang = 1 (đau thắt ngực do gắng sức), oldpeak cao, và ca cao (nhiều mạch máu bị hẹp) có nguy cơ bệnh tim cao, cần can thiệp y tế sớm (như chụp mạch vành hoặc đặt stent).
+# thalach (nhịp tim tối đa) có thể được sử dụng để đánh giá khả năng gắng sức: nhịp tim tối đa thấp hơn (tương quan thuận với target) có thể là dấu hiệu của bệnh tim.
+# Tuy nhiên, ma trận tương quan chỉ đo lường mối quan hệ tuyến tính, nên một số mối quan hệ phi tuyến (non-linear) có thể bị bỏ qua. Ví dụ, chol và trestbps có tương quan yếu với target, nhưng chúng vẫn có thể ảnh hưởng đến bệnh tim thông qua các mối quan hệ phức tạp hơn.
+```
+
+```{r}
+# Biểu đồ 6: Phân bố số lượng bệnh nhân theo loại đau ngực (cp) và tình trạng bệnh tim (target)
+# Create the bar plot
+ggplot(data = heart, aes(x = factor(cp), fill = factor(target))) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("blue", "red"), labels = c("No Heart Disease", "Heart Disease")) +
+  labs(title = "Distribution of Patients by Chest Pain Type (cp) and Heart Disease Status",
+       x = "Chest Pain Type (cp: 0-3)",
+       y = "Count",
+       fill = "Target") +
+  theme_minimal() +
+  scale_x_discrete(labels = c("0" = "Typical Angina", "1" = "Atypical Angina", "2" = "Non-Anginal Pain", "3" = "Asymptomatic"))
+```
+
+
+```{r}
+# Typical Angina (cp = 0):
+# Đây là nhóm có số lượng bệnh nhân đông nhất, với hơn 300 bệnh nhân không có bệnh tim (màu xanh) và khoảng 100 bệnh nhân có bệnh tim (màu đỏ).
+# Tỷ lệ bệnh nhân không có bệnh tim (màu xanh) chiếm ưu thế rõ rệt trong nhóm này.
+# Atypical Angina (cp = 1):
+# Số lượng bệnh nhân ít hơn, với khoảng 50 bệnh nhân không có bệnh tim và khoảng 100 bệnh nhân có bệnh tim.
+# Tỷ lệ bệnh nhân có bệnh tim (màu đỏ) cao hơn so với không có bệnh tim (màu xanh).
+# Non-Anginal Pain (cp = 2):
+# Số lượng bệnh nhân giảm xuống, với khoảng 75 bệnh nhân không có bệnh tim và khoảng 150 bệnh nhân có bệnh tim.
+# Nhóm có bệnh tim (màu đỏ) chiếm ưu thế rõ rệt trong loại đau ngực này.
+# Asymptomatic (cp = 3):
+# Đây là nhóm ít nhất, với khoảng 25 bệnh nhân không có bệnh tim và khoảng 50 bệnh nhân có bệnh tim.
+# Tỷ lệ bệnh nhân có bệnh tim (màu đỏ) cũng cao hơn so với không có bệnh tim (màu xanh).
+# Kết luận:
+# Mối quan hệ giữa cp và target:
+# Loại đau ngực (cp) có ảnh hưởng rõ rệt đến nguy cơ mắc bệnh tim:
+# Typical Angina (cp = 0): Mặc dù đây là nhóm đông nhất, nhưng tỷ lệ bệnh nhân không có bệnh tim cao hơn nhiều so với có bệnh tim. Điều này có thể cho thấy rằng đau ngực đặc trưng không phải lúc nào cũng là dấu hiệu của bệnh tim, mà có thể liên quan đến các nguyên nhân khác (như đau cơ hoặc vấn đề tiêu hóa).
+# Atypical Angina (cp = 1) và Non-Anginal Pain (cp = 2): Các nhóm này có tỷ lệ bệnh tim cao hơn, đặc biệt là cp = 2 (Non-Anginal Pain) với tỷ lệ bệnh tim vượt trội. Điều này cho thấy đau không đặc trưng hoặc không liên quan đến tim có thể là dấu hiệu quan trọng của bệnh tim tiềm ẩn.
+# Asymptomatic (cp = 3): Dù số lượng ít, nhưng tỷ lệ bệnh tim cao hơn, cho thấy nhiều bệnh nhân không có triệu chứng đau ngực vẫn có nguy cơ mắc bệnh tim, nhấn mạnh tầm quan trọng của việc kiểm tra định kỳ ngay cả khi không có triệu chứng.
+```
