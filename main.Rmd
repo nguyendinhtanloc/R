@@ -1,0 +1,730 @@
+---
+title: "Heart Disease Prediction Project"
+output: html_document
+date: "2025-05-04"
+---
+
+### Mở các gói cài đặt nếu chưa có
+
+```{r}
+# Danh sách các gói cần thiết
+packages <- c("tidyverse", "caret", "randomForest", "gbm", "pROC", "ggplot2")
+
+# Kiểm tra và cài đặt các gói chưa có
+installed <- rownames(installed.packages())
+to_install <- packages[!packages %in% installed]
+if (length(to_install) > 0) {
+  install.packages(to_install)
+  message("Các gói sau đã được cài đặt: ", paste(to_install, collapse = ", "))
+} else {
+  message("Tất cả các gói đã được cài đặt.")
+}
+```
+
+
+### Load các thư viện cần thiết trong chương trình.
+# Phần này tải các thư viện R cần thiết cho toàn bộ dự án. Các thư viện này cung cấp các hàm và công cụ để thao tác dữ liệu, xây dựng mô hình và trực quan hóa kết quả.
+
+```{r setup, include=FALSE}
+# Thiết lập ban đầu
+knitr::opts_chunk$set(echo = TRUE)
+
+# Cài đặt thư viện cần thiết
+library(readr)
+library(tidyr) # Tách cột và xử lý dữ liệu
+library(dplyr) # Xử lý dữ liệu và thay thế giá trị thiếu
+
+library(tidyverse)
+library(caret)
+library(randomForest)
+library(gbm)
+library(pROC)
+library(ggplot2) # Vẽ đồ thị
+```
+
+### Phần 1: Giới thiệu.
+  - Trong bối cảnh y học hiện đại, bệnh tim mạch nổi lên như một thách thức sức khỏe toàn cầu, âm thầm tước đi sinh mạng và gây ra gánh nặng to lớn cho xã hội. Việc phát hiện sớm các dấu hiệu nguy cơ và can thiệp kịp thời được xem là yếu tố then chốt để giảm thiểu những hậu quả nghiêm trọng này. Sự trỗi dậy mạnh mẽ của lĩnh vực Học máy (Machine Learning) mang đến một tiềm năng to lớn, hứa hẹn khai thác sức mạnh của dữ liệu y tế đồ sộ nhằm hỗ trợ nhận diện sớm nguy cơ mắc bệnh tim, mở ra những hướng đi mới trong phòng ngừa và điều trị.
+  - Đồ án này được khởi xướng với mục tiêu cốt lõi là thiết kế và xây dựng các mô hình học máy tiên tiến, có khả năng phân tích sâu rộng dữ liệu y tế để dự đoán nguy cơ phát triển bệnh tim một cách hiệu quả. Hơn cả việc tạo ra những công cụ dự đoán chính xác, chúng em kỳ vọng sẽ kiến tạo những hệ thống trí tuệ nhân tạo, mang trong mình khả năng "tiên lượng" sức khỏe tim mạch của từng cá nhân. Từ đó, mở ra những cơ hội mới cho các liệu pháp phòng ngừa cá nhân hóa và các phác đồ điều trị tối ưu.
+  - Nền tảng của dự án này nằm ở việc khám phá những tri thức ẩn sâu trong dữ liệu y tế - nguồn tài nguyên vô giá để thấu hiểu các yếu tố nguy cơ và quá trình phát triển của bệnh tim. Chúng em sẽ tập trung vào việc xây dựng và thử nghiệm các mô hình học máy đa dạng, được ví như những "bộ não" nhân tạo, có khả năng nhận diện các закономерности phức tạp trong tập dữ liệu. Toàn bộ quá trình phân tích và phát triển mô hình sẽ được thực hiện trên nền tảng ngôn ngữ R, một "sân chơi" lý tưởng và mạnh mẽ cho những người làm việc với dữ liệu.
+  - Trong cuộc chiến đầy thách thức chống lại bệnh tim mạch, mục tiêu của chúng em không chỉ dừng lại ở việc đưa ra những dự đoán thông thường. Chúng em ấp ủ khát vọng tạo ra những "nhà tiên tri" trí tuệ nhân tạo, có khả năng thấu suốt tương lai sức khỏe tim mạch của mỗi người, từ đó vạch ra con đường phòng ngừa và điều trị tối ưu nhất. Chúng em sẽ không chỉ đơn thuần so sánh hiệu suất giữa các mô hình, mà còn hướng đến việc tìm ra "nhà vô địch" trong lĩnh vực dự đoán - một mô hình có độ chính xác cao đến mức có thể nắm bắt những thay đổi nhỏ nhất trong nhịp tim và hơi thở, để bảo vệ những sinh mạng quý giá.
+  - Đồ án này không chỉ là một nhiệm vụ học tập cuối khóa, mà còn là một bước đệm quan trọng trong việc ứng dụng trí tuệ nhân tạo vào lĩnh vực y tế. Chúng em tin tưởng rằng sức mạnh phi thường của công nghệ có thể làm dịu bớt gánh nặng của bệnh tim mạch và mang lại hy vọng cho hàng triệu người trên khắp thế giới. Kết quả của đồ án này có tiềm năng đóng góp vào việc phát triển các công cụ hỗ trợ chẩn đoán sớm, cá nhân hóa các chiến lược phòng ngừa và điều trị, và cuối cùng là nâng cao chất lượng cuộc sống cho cộng đồng.
+
+### Phần 2: Tiền xử lý dữ liệu (23133059_DinhHoangPhuong).
+  Để chuẩn bị cho quá trình phân tích chuyên sâu và xây dựng các mô hình dự đoán hiệu quả, chúng em đã tiến hành một loạt các bước xử lý dữ liệu phức tạp. Bắt đầu với việc thu thập thông tin từ năm nguồn dữ liệu riêng biệt, quy trình tiếp theo tập trung vào việc giải quyết sự khác biệt về định dạng giữa các tệp này. Sau đó, dữ liệu được chuẩn hóa một cách nhất quán để đảm bảo tính đồng nhất. Cuối cùng, tất cả các tập dữ liệu đã được xử lý sẽ được hợp nhất thành một cấu trúc duy nhất, sẵn sàng cho các giai đoạn phân tích và mô hình hóa tiếp theo.
+
+## 2.1. Đọc dữ liệu đầu vào và xử lý định dạng ban đầu
+  - Nhằm chuẩn bị kỹ lưỡng cho quá trình phân tích chuyên sâu và xây dựng các mô hình dự đoán, chúng em đã tiến hành thu thập dữ liệu từ năm nguồn tệp khác nhau. Trong số này, bốn tệp (cleveland.data, hungarian.data, long-beach-va.data, switzerland.data) sử dụng dấu phẩy (,) như một dấu phân cách tự nhiên giữa các trường dữ liệu. Tệp còn lại, hungarian2.data, lại sử dụng dấu khoảng trắng để phân tách các giá trị. Sự khác biệt về định dạng này đặt ra yêu cầu cần có các bước xử lý riêng biệt để đảm bảo tính đồng nhất trước khi tiến hành các giai đoạn phân tích và hợp nhất dữ liệu tiếp theo của chúng em.
+  - Để đưa dữ liệu từ các tệp này vào môi trường R, chúng em đã sử dụng hàm read.table(). Cụ thể, đối với các tệp sử dụng dấu phẩy làm dấu phân cách, tùy chọn sep = "," đã được sử dụng. Riêng tệp hungarian2.data, do sử dụng dấu khoảng trắng, chúng em đã thiết lập sep = "". Kết quả là năm DataFrame riêng biệt, được đặt tên lần lượt là data_file1 đến data_file5, và sau đó được tổ chức vào một danh sách chung có tên dfList.
+  - Để có cái nhìn tổng quan ban đầu về dữ liệu vừa nhập và nắm bắt cấu trúc cơ bản của từng DataFrame, chúng em đã triển khai một vòng lặp. Vòng lặp này có nhiệm vụ hiển thị một vài dòng đầu tiên của mỗi DataFrame, cùng với thông tin về số lượng hàng và cột (kích thước) của nó. Bước kiểm tra nhanh này giúp chúng em phát hiện sớm các vấn đề tiềm ẩn trong quá trình đọc dữ liệu.
+  
+```{r}
+# Đọc dữ liệu phân cách bằng dấu ","
+data_file1 <- read.table("data/cleveland.data", header = FALSE, sep = ",", fill = TRUE)
+data_file2 <- read.table("data/hungarian.data", header = FALSE, sep = ",", fill = TRUE)
+data_file3 <- read.table("data/long-beach-va.data", header = FALSE, sep = ",", fill = TRUE)
+data_file4 <- read.table("data/switzerland.data", header = FALSE, sep = ",", fill = TRUE)
+
+# Đọc dữ liệu phân cách bằng khoảng trắng
+data_file5 <- read.table("data/hungarian2.data", header = FALSE, sep = "", fill = TRUE)
+
+# Lưu vào danh sách
+dfList <- list(data_file1, data_file2, data_file3, data_file4, data_file5)
+
+# Kiểm tra dữ liệu đã đọc
+
+for (df_name in names(dfList)) {
+  df <- dfList[[df_name]]
+  cat("Tên dataframe:", df_name, "\n")
+  print(head(df))
+  cat("Kích thước:", dim(df), "\n")
+  cat("--------------------------\n")
+}
+```
+
+# 2.2. Lưu 5 file data thành dạng table file.csv
+  - Để đạt được mục tiêu cuối cùng là có một tập hợp dữ liệu thống nhất từ năm tệp nguồn ban đầu, chúng em đã triển khai một quy trình gồm nhiều giai đoạn. Đối với những tệp có định dạng .data, bước đầu tiên là chuyển đổi chúng sang định dạng bảng CSV, một định dạng phổ biến và dễ xử lý. Các tệp CSV này sau đó sẽ được lưu trữ một cách có tổ chức. Dù tệp gốc có định dạng là .data hay đã là CSV, tất cả sẽ được tập hợp lại vào một danh sách duy nhất, tạo điều kiện thuận lợi cho các thao tác và phân tích dữ liệu tiếp theo của chúng em.
+  - Cụ thể, quy trình này được thực hiện như sau:
+    + Thiết lập nơi lưu trữ: Chúng em bắt đầu bằng việc kiểm tra sự tồn tại của thư mục 'data'. Nếu thư mục này chưa có, nó sẽ được tạo ra để làm nơi chứa cho các tệp CSV đã qua xử lý.
+    + Xuất dữ liệu ra định dạng CSV: Một vòng lặp được sử dụng để xử lý từng DataFrame hiện có trong danh sách dfList. Mỗi DataFrame sẽ được xuất thành một tệp CSV riêng biệt và được lưu trữ trong thư mục 'data'. Tên của các tệp CSV này được đặt tương ứng với tên của DataFrame ban đầu. Quá trình xuất được cấu hình để sử dụng dấu phẩy làm dấu phân cách giữa các giá trị và không bao gồm tên hàng hay tên cột trong tệp CSV.
+    + Nhập lại dữ liệu đã chuẩn hóa: Sau khi tất cả các DataFrame đã được lưu trữ thành công dưới dạng CSV, chúng em tiến hành đọc lại toàn bộ các tệp CSV này từ thư mục 'data'. Các DataFrame được đọc lại này sẽ được tập hợp vào một danh sách mới, được đặt tên là dfList_csv. Bước này đảm bảo rằng toàn bộ dữ liệu, bất kể định dạng gốc, đều được đưa về một cấu trúc DataFrame thống nhất trong môi trường R, sẵn sàng cho các bước tiền xử lý và phân tích tiếp theo của chúng em.
+  
+```{r}
+# Tạo thư mục 'data' nếu chưa tồn tại
+if (!dir.exists("data")) {
+  dir.create("data")
+}
+
+# Lặp qua danh sách để ghi từng dataframe thành file CSV trong thư mục 'data'
+for (df_name in names(dfList)) {
+  write.table(dfList[[df_name]], file = paste0("data/", df_name, ".csv"),
+              sep = ",", row.names = FALSE, col.names = FALSE)
+}
+
+# Đọc lại các file CSV từ thư mục 'data'
+dfList_csv <- list(
+  data_file1 = read.csv("data/data_file1.csv", header = FALSE, sep = ","),
+  data_file2 = read.csv("data/data_file2.csv", header = FALSE, sep = ","),
+  data_file3 = read.csv("data/data_file3.csv", header = FALSE, sep = ","),
+  data_file4 = read.csv("data/data_file4.csv", header = FALSE, sep = ","),
+  data_file5 = read.csv("data/data_file5.csv", header = FALSE, sep = ",")
+)
+```
+
+## 2.3. Kiểm tra số lượng cột
+  - Để đảm bảo quá trình phân tích diễn ra trơn tru, bước tiếp theo chúng em tập trung vào việc kiểm định cấu trúc dữ liệu của từng tệp CSV. Cụ thể, chúng em sẽ xem xét số lượng cột hiện có trong mỗi tệp và so sánh nó với danh sách các biến mục tiêu mà chúng em dự định sử dụng trong phân tích.
+  - Danh sách các biến này, được đặt tên là colnames, bao gồm: "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal", và "target".
+  - Một yêu cầu quan trọng khác là xác minh kiểu dữ liệu của các cột. Theo đó, các cột ở vị trí 1, 2, 3, 7, và 14 trong mỗi tệp CSV (tương ứng với các biến trong colnames) cần có kiểu dữ liệu số nguyên (integer). Ngược lại, các cột từ vị trí 4 đến 6 và từ vị trí 8 đến 13 được kỳ vọng có kiểu dữ liệu chuỗi ký tự (character).
+  - Nếu số lượng cột trong một tệp CSV trùng khớp với số lượng biến trong colnames, chúng em sẽ tiến hành gán tên từ colnames cho các cột tương ứng trong tệp đó. Điều này nhằm mục đích đảm bảo tính nhất quán trong cách gọi tên biến và tạo thuận lợi cho việc tham chiếu chúng trong các bước phân tích sau này của chúng em.
+  - Cuối cùng, sau khi đã kiểm tra và chuẩn hóa cấu trúc của từng tệp CSV riêng lẻ, chúng em sẽ tiến tới việc tạo một tập dữ liệu hợp nhất, kết hợp thông tin từ cả năm tệp CSV đã được xử lý. Tập dữ liệu tổng hợp này sẽ đóng vai trò là nền tảng chính cho các hoạt động phân tích và xây dựng mô hình tiếp theo của chúng em.
+  - Để nhanh chóng kiểm tra số lượng cột trong mỗi DataFrame đã được đọc và lưu trữ trong dfList, chúng em đã sử dụng một vòng lặp. Vòng lặp này tuần tự truy cập từng DataFrame và hiển thị số lượng cột (ncol(df)) mà nó chứa
+  
+```{r}
+# Kiểm tra số lượng cột của từng df
+for (df in dfList) {
+  print(ncol(df))   # Với dataframe (số cột)
+}
+```
+
+# Kết quả: 
+  Một số file chỉ có 1 cột, vì toàn bộ dòng được đọc như một chuỗi (do định dạng chưa chuẩn). Cần tách các giá trị trong chuỗi.
+
+## 2.4. Tách dữ liệu thủ công bằng separate() từ thư viện tidyr
+  - Sau quá trình kiểm tra số lượng cột, chúng em nhận thấy rằng hai tập dữ liệu đầu tiên trong danh sách, tương ứng với các tệp Cleveland (dfList[1]) và Hungarian (dfList[2]), gặp phải vấn đề về cấu trúc nghiêm trọng. Thay vì hiển thị 14 cột thông tin như kỳ vọng, mỗi DataFrame này chỉ chứa duy nhất một cột dữ liệu.
+  - Nguyên nhân sâu xa của tình trạng này có thể bắt nguồn từ cách các giá trị được tổ chức trong các tệp gốc. Dường như, dấu phẩy (,) không chỉ được sử dụng để phân tách các trường dữ liệu khác nhau mà còn có khả năng xuất hiện bên trong các giá trị số như dấu phân cách thập phân. Điều này đã dẫn đến việc toàn bộ nội dung của mỗi dòng dữ liệu bị phần mềm đọc nhầm thành một chuỗi ký tự duy nhất.
+  - Thêm vào đó, chúng em cũng ghi nhận sự xuất hiện của ký tự đặc biệt là dấu hỏi (?) ở một vài dòng dữ liệu. Sự hiện diện của ký tự này có thể gây ra những trở ngại không nhỏ trong các bước xử lý tiếp theo, đặc biệt là khi cố gắng chuyển đổi kiểu dữ liệu của các cột.
+  - Để minh họa rõ hơn, dòng dữ liệu đầu tiên trong dfList[1] đã được đọc thành một chuỗi duy nhất như sau: 63.0,1.0,1.0,145.0,233.0,1.0,2.0,150.0,0.0,2.3,3.0,0.0,6.0,0. Trong trường hợp này, dấu phẩy không được nhận diện là dấu phân tách giữa các thuộc tính khác nhau. Tương tự, dòng đầu tiên của dfList[2] lại được đọc là: 28,1,2,130,132,0,2,185,0,0,?,?,?,0. Điều này cho thấy rằng, do định dạng không chuẩn của tệp, phần mềm đã không thể phân tách các giá trị thành các cột riêng biệt. 
+  - Để khắc phục triệt để vấn đề này và đảm bảo rằng cả hai DataFrame đều có đủ 14 cột thông tin tương ứng với danh sách colnames đã định nghĩa, chúng em đã quyết định áp dụng kỹ thuật tách dữ liệu thủ công bằng cách tận dụng sức mạnh của hàm separate() từ thư viện tidyr trong R. Cụ thể, chúng em đã thực hiện các thao tác sau:
+    + Đối với data_file1 (dfList[[1]]): Sử dụng toán tử %>% để chuyển DataFrame này làm đầu vào cho hàm separate(). Hàm này đã được cấu hình để tách cột duy nhất (chỉ định bởi col = 1) thành nhiều cột mới. Tên của các cột mới này được lấy từ biến col_names (với giả định rằng biến này đã được định nghĩa trước đó và chứa 14 tên cột). Dấu phẩy (,) được chỉ định rõ ràng là dấu phân cách (sep = ","). Để tăng cường khả năng tự động hóa, tùy chọn convert = TRUE đã được kích hoạt để cố gắng tự động chuyển đổi kiểu dữ liệu của các cột mới tạo thành kiểu dữ liệu phù hợp nhất. Cuối cùng, tùy chọn fill = "right" được sử dụng để xử lý các trường hợp có số lượng dấu phân cách không đủ, bằng cách điền các giá trị thiếu vào phía bên phải của các hàng.
+    + Đối với data_file2 (dfList[[2]]): Một quy trình tương tự đã được áp dụng, sử dụng hàm separate() với các tham số tương tự để tách cột duy nhất thành 14 cột dựa trên dấu phẩy.
+  - Sau khi thực hiện các thao tác tách cột, chúng em đã in ra nội dung của data_file1 và data_file2. Mục đích của việc này là để kiểm tra trực quan kết quả của quá trình tái cấu trúc dữ liệu, đảm bảo rằng dữ liệu đã được phân tách thành 14 cột như mong đợi và sẵn sàng cho các bước xử lý tiếp theo, bao gồm việc xử lý các giá trị bị thiếu (ký hiệu bằng dấu ?) và chuyển đổi kiểu dữ liệu cho phù hợp với yêu cầu phân tích.
+  
+```{r}
+# Tách cột cho dfList[1] (data_file1)
+data_file1 <- dfList[[1]] %>%
+  separate(col = 1, into = col_names, sep = ",", convert = TRUE, fill = "right")
+
+# Tách cột cho dfList[2] (data_file2)
+data_file2 <- dfList[[2]] %>%
+  separate(col = 1, into = col_names, sep = ",", convert = TRUE, fill = "right")
+
+# In ra để kiểm tra
+data_file1
+data_file2
+```
+## 2.5. Gán tên cột cho tất cả các dataframe:
+  - Để tối ưu hóa quá trình phân tích và xây dựng mô hình, chúng em đã thực hiện một bước then chốt là đồng bộ hóa tên cột trên toàn bộ năm bảng dữ liệu. Mục đích của việc này là đảm bảo rằng tất cả các DataFrame đều sử dụng chung một bộ tên cột chuẩn, từ đó tạo điều kiện thuận lợi cho việc tham chiếu và xử lý dữ liệu một cách nhất quán.
+  - Bộ tên cột chuẩn này, được lưu trữ trong biến colnames, bao gồm 14 thuộc tính cốt lõi cho việc nghiên cứu bệnh tim: "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal", và "target".
+  - Đối với ba DataFrame đầu tiên là dfList[[3]], dfList[[4]], và dfList[[5]] (tương ứng với dữ liệu từ Switzerland, Long Beach và Hungarian2), chúng em đã lựa chọn 14 cột đầu tiên và gán bộ tên colnames cho chúng. Thao tác này nhằm mục đích chuẩn hóa cả số lượng và tên gọi của các cột trong các DataFrame này, đặt nền móng cho việc hợp nhất dữ liệu sau này.
+  - Cuối cùng, chúng em đã áp dụng trực tiếp bộ tên colnames cho toàn bộ năm DataFrame đã qua xử lý, bao gồm data_file1, data_file2, data_file3, data_file4, và data_file5. Bất kể cấu trúc ban đầu của từng tệp dữ liệu có sự khác biệt, sau bước này, tất cả các bảng dữ liệu đều tuân theo một hệ thống tên cột thống nhất. Điều này không chỉ giúp chúng em dễ dàng quản lý và truy cập thông tin mà còn nâng cao tính minh bạch và hiệu quả trong toàn bộ tiến trình phân tích của chúng em
+
+```{r}
+# Đặt tên cột chuẩn
+colnames <- c("age", "sex", "cp", "trestbps", "chol", "fbs",
+              "restecg", "thalach", "exang", "oldpeak",
+              "slope", "ca", "thal", "target")
+
+# Cắt và gán tên cột nếu có đủ 14 cột
+data_file3 <- dfList[[3]][, 1:14]
+data_file4 <- dfList[[4]][, 1:14]
+data_file5 <- dfList[[5]][, 1:14]
+
+colnames(data_file1) <- colnames
+colnames(data_file2) <- colnames
+colnames(data_file3) <- colnames
+colnames(data_file4) <- colnames
+colnames(data_file5) <- colnames
+```
+
+## 2.6. KIểm tra kiểu dữ liệu của các data
+  Để làm sâu sắc hơn hiểu biết về cấu trúc dữ liệu hiện tại, chúng em đã tiến hành rà soát kiểu dữ liệu của từng cột trong mỗi DataFrame bằng cách sử dụng hàm kiểm tra kiểu dữ liệu (như str() trong R). Qua quá trình này, chúng em nhận thấy sự không đồng nhất về kiểu dữ liệu giữa các thuộc tính, với sự tồn tại đồng thời của kiểu số nguyên (integer) và kiểu ký tự (character). Nhằm đảm bảo tính nhất quán cho các phân tích định lượng tiếp theo, chúng em quyết định thực hiện chuyển đổi toàn bộ các cột sang kiểu số (numeric), bao gồm cả số nguyên và số thực (float).
+  - Để đạt được mục tiêu này, chúng em đã xây dựng hai hàm tùy chỉnh:
+    + replace_invalid_values(df): Hàm này được thiết kế để xử lý các giá trị không hợp lệ thường gặp trong tập dữ liệu, ví dụ như ký tự '?' hoặc giá trị '-9'. Chức năng chính của hàm là thay thế tất cả những giá trị này bằng NA (Not Available), đại diện cho dữ liệu bị thiếu trong môi trường R.
+    + convert_to_numeric(df): Tiếp nối bước xử lý giá trị không hợp lệ, hàm này sẽ chuyển đổi kiểu dữ liệu của tất cả các cột trong DataFrame đầu vào sang kiểu số (numeric) thông qua việc sử dụng hàm mutate_all(as.numeric) từ thư viện dplyr, kết hợp với toán tử ống dẫn %>%.
+  - Sau khi định nghĩa rõ ràng chức năng của hai hàm trên, chúng em đã áp dụng một cách tuần tự cả hai hàm này lên từng DataFrame trong số năm DataFrame đã được tạo trước đó (data_file1 đến data_file5). Quy trình này bắt đầu bằng việc thay thế các giá trị không hợp lệ bằng NA, sau đó toàn bộ các cột trong mỗi DataFrame sẽ được chuyển đổi sang kiểu số.
+  - Cuối cùng, để kiểm tra và xác nhận tính hiệu quả của quá trình chuyển đổi kiểu dữ liệu, chúng em đã sử dụng hàm str() trên từng DataFrame (data_file1 đến data_file5). Kết quả mong đợi là tất cả các cột hiện tại đều có kiểu dữ liệu là 'num' (numeric), đảm bảo dữ liệu đã sẵn sàng cho các bước phân tích tiếp theo
+  
+```{r}
+replace_invalid_values <- function(df) {
+  df[df == "?" | df == "-9"] <- NA  # Thay giá trị không hợp lệ thành NA
+  return(df)
+}
+
+# Áp dụng hàm này cho từng dataframe
+data_file1 <- replace_invalid_values(data_file1)
+data_file2 <- replace_invalid_values(data_file2)
+data_file3 <- replace_invalid_values(data_file3)
+data_file4 <- replace_invalid_values(data_file4)
+data_file5 <- replace_invalid_values(data_file5)
+
+convert_to_numeric <- function(df) {
+  df <- df %>%
+    mutate_all(as.numeric)  # Chuyển tất cả các cột sang kiểu numeric
+  return(df)
+}
+
+# Áp dụng hàm cho từng dataframe
+data_file1 <- convert_to_numeric(data_file1)
+data_file2 <- convert_to_numeric(data_file2)
+data_file3 <- convert_to_numeric(data_file3)
+data_file4 <- convert_to_numeric(data_file4)
+data_file5 <- convert_to_numeric(data_file5)
+
+str(data_file1)
+str(data_file2)
+str(data_file3)
+str(data_file4)
+str(data_file5)
+```
+
+## 2.7. Gộp dữ liệu thành một bảng duy nhất
+  - Sau khi hoàn thiện các giai đoạn tiền xử lý quan trọng, bao gồm việc chuẩn hóa cấu trúc và định dạng kiểu dữ liệu cho từng bảng dữ liệu riêng lẻ, bước kế tiếp là hợp nhất toàn bộ thông tin thành một bảng tổng hợp duy nhất. Mục đích của hành động này là tạo ra một tập dữ liệu đầy đủ, tích hợp dữ liệu từ cả năm nguồn ban đầu, sẵn sàng cho các hoạt động phân tích sâu hơn và xây dựng các mô hình dự đoán.
+  - Để thực hiện việc này, chúng em đã sử dụng hàm bind_rows() từ thư viện dplyr trong R. Hàm này hoạt động bằng cách ghép các DataFrame theo chiều dọc, tức là xếp chồng các hàng của data_file1, data_file2, data_file3, data_file4, và data_file5 lên nhau, tạo thành một DataFrame mới có tên combined_data. Quá trình này dựa trên giả định rằng tất cả các DataFrame đã được chuẩn hóa để có cấu trúc cột tương đồng (cùng số lượng và tên cột), một điều đã được chúng em đảm bảo ở các bước xử lý trước đó.
+  - Cuối cùng, để bảo quản tập dữ liệu tổng hợp này cho các mục đích sử dụng sau này, chúng em đã dùng hàm write.csv(). DataFrame combined_data được lưu trữ vào một tệp CSV có tên "heart_all_combined.csv" trong thư mục "data". Tùy chọn row.names = FALSE được sử dụng để loại bỏ việc ghi chỉ số hàng vào tệp CSV. Tập dữ liệu "heart_all_combined.csv" này sẽ đóng vai trò là nguồn dữ liệu chính cho các bước phân tích và phát triển mô hình dự đoán bệnh tim tiếp theo của chúng em
+
+```{r}
+# Gộp lại
+combined_data <- bind_rows(data_file1, data_file2, data_file3, data_file4, data_file5)
+
+# Lưu ra file csv tổng
+write.csv(combined_data, "data/heart_all_combined.csv", row.names = FALSE)
+```
+
+## 2.8 Kiểm tra dữ liệu sau khi gộp
+  - Sau khi hoàn tất việc tích hợp dữ liệu từ năm nguồn khác nhau vào một bảng tổng hợp duy nhất (combined_data), bước tiếp theo là thực hiện một quy trình kiểm tra chất lượng đối với tập dữ liệu mới này. Mục đích của việc này là đảm bảo rằng quá trình hợp nhất diễn ra suôn sẻ và không phát sinh bất kỳ vấn đề nào, đồng thời cung cấp một cái nhìn tổng quan về tình trạng dữ liệu trước khi tiến hành các phân tích chuyên sâu hơn.
+  - Để bắt đầu, chúng em đã tải lại tệp CSV "heart_all_combined.csv" vào một DataFrame mới, được đặt tên là data. DataFrame này sẽ là nền tảng cho các hoạt động phân tích tiếp theo của chúng em.
+  - Tiếp theo, chúng em đã sử dụng hàm glimpse() (thường có trong các thư viện như dplyr hoặc tibble) để có được một bản tóm tắt về cấu trúc của DataFrame data. Hàm này hiển thị thông tin chi tiết về số lượng hàng và cột, tên của từng biến (cột) và kiểu dữ liệu tương ứng của chúng. Nhờ đó, chúng em có thể xác nhận rằng số lượng biến và kiểu dữ liệu sau khi hợp nhất vẫn nhất quán với các bước chuẩn hóa trước đó.
+  - Để đánh giá mức độ đầy đủ của thông tin, chúng em đã tính toán tổng số lượng giá trị bị khuyết (NA) trong mỗi cột bằng cách sử dụng hàm colSums(is.na(data)). Kết quả này giúp chúng em xác định được những cột có chứa nhiều dữ liệu bị thiếu, từ đó đưa ra các quyết định phù hợp về phương pháp xử lý tiếp theo.
+  - Cuối cùng, để có một cái nhìn trực quan hơn về tỷ lệ dữ liệu bị khuyết trong từng biến, chúng em đã sử dụng hàm sapply() kết hợp với một hàm vô danh. Hàm này tính toán tỷ lệ phần trăm các giá trị NA so với tổng số quan sát trong mỗi cột. Thông tin này đặc biệt hữu ích trong việc xác định các biến có tỷ lệ thiếu dữ liệu cao, có thể đòi hỏi các biện pháp xử lý đặc biệt hoặc thậm chí xem xét loại bỏ nếu chúng ảnh hưởng đáng kể đến quá trình phân tích.
+  - Thông qua việc thực hiện các bước kiểm tra này, chúng em có thể tự tin rằng tập dữ liệu tổng hợp data đã sẵn sàng cho các giai đoạn phân tích và xây dựng mô hình tiếp theo với chất lượng tốt nhất có thể.
+
+```{r}
+# Đọc lại file để làm việc tiếp
+data <- read_csv("data/heart_all_combined.csv")
+
+# Kiểm tra sơ bộ
+glimpse(data)
+
+# Số lượng và tỉ lệ NA
+colSums(is.na(data))
+sapply(data, function(x) mean(is.na(x)) * 100)
+```
+
+# Tổng quan về dữ liệu thiếu
+
+Cột	         Số NA	      %NA	        Ghi chú thêm
+age	          94	        7.2%	      Tương đối ít
+sex	          94	        7.2%     	  Ít
+cp	          94	        7.2%      	Ít
+trestbps	    154	        11.8%	      Có thể giữ lại
+chol    	    147	        11.2%	      Có thể xử lý được
+fbs	          192	        14.7%	      Hơi cao, nhưng vẫn xử lý được
+restecg	      97	        7.4%	      Ít
+thalach	      150	        11.5%	      Trung bình
+exang	        150	        11.5%	      Trung bình
+oldpeak	      156	        11.9%	      Trung bình
+slope	        593	        45.3%	      Quá cao
+ca	          995	        76.1%	      Rất cao 
+thal	        846	        64.7%	      Rất cao
+target	      94	        7.2%	      Quan trọng, cần giữ
+
+## 2.9 Thống kê mô tả và xử lý dữ liệu thiếu
+
+```{r}
+# Tính các thông số thống kê
+summary_stats <- data.frame(
+  Feature = names(data),
+  Min = sapply(data, function(x) if (is.numeric(x)) min(x, na.rm = TRUE) else NA),
+  Max = sapply(data, function(x) if (is.numeric(x)) max(x, na.rm = TRUE) else NA),
+  Mean = sapply(data, function(x) if (is.numeric(x)) mean(x, na.rm = TRUE) else NA),
+  Median = sapply(data, function(x) if (is.numeric(x)) median(x, na.rm = TRUE) else NA),
+  SD = sapply(data, function(x) if (is.numeric(x)) sd(x, na.rm = TRUE) else NA)
+)
+
+# Hệ số biến thiên
+summary_stats$CV <- summary_stats$SD / summary_stats$Mean
+```
+
+## 2.10 Hàm xử lý giá trị thiếu dựa trên CV
+
+```{r}
+# Hàm tính mode
+get_mode <- function(v) {
+  uniqv <- unique(na.omit(v))
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+# Hàm điền NA
+handle_missing_values <- function(data, summary_stats) {
+  for (col in names(data)) {
+    if (any(is.na(data[[col]]))) {
+      if (is.numeric(data[[col]])) {
+        min_val <- summary_stats$Min[summary_stats$Feature == col]
+        max_val <- summary_stats$Max[summary_stats$Feature == col]
+        mean_val <- summary_stats$Mean[summary_stats$Feature == col]
+        sd_val <- summary_stats$SD[summary_stats$Feature == col]
+        median_val <- summary_stats$Median[summary_stats$Feature == col]
+        cv_val <- summary_stats$CV[summary_stats$Feature == col]
+        
+        if (cv_val > 0.5) {
+          lower_limit <- max(min_val, mean_val - sd_val)
+          upper_limit <- min(max_val, mean_val + sd_val)
+          data[[col]][is.na(data[[col]])] <- runif(sum(is.na(data[[col]])), lower_limit, upper_limit)
+        } else {
+          data[[col]][is.na(data[[col]])] <- median_val
+        }
+      } else {
+        data[[col]][is.na(data[[col]])] <- get_mode(data[[col]])
+      }
+    }
+  }
+  return(data)
+}
+
+# Áp dụng xử lý
+data <- handle_missing_values(data, summary_stats)
+
+
+# In dữ liệu sau khi xử lý
+print(data)
+```
+
+## 2.11 Kiểm tra lại dữ liệu sau xử lý và lưu
+
+```{r}
+# Kiểm tra còn NA không
+colSums(is.na(data))
+
+# Ghi file cuối
+write.csv(data, "data/heart_data_processed.csv", row.names = FALSE)
+```
+
+
+
+
+
+
+### Phần 3: Trực quan hóa dữ liệu (23133044_NguyenVuMinh)
+# Phần này (do bạn Nguyễn Vũ Minh thực hiện) sẽ trình bày các kỹ thuật trực quan hóa dữ liệu đã được sử dụng để khám phá các đặc trưng của tập dữ liệu và mối quan hệ giữa các biến, đặc biệt là với biến mục tiêu (bệnh tim).
+
+
+
+
+
+
+
+
+### Phần 4: Mô hình dự đoán (23133071_MaiQuocThai)
+  Trong phần tiếp theo của nghiên cứu, chúng em sẽ tập trung vào việc phát triển và đánh giá khả năng dự đoán bệnh tim của ba thuật toán học máy phổ biến: Hồi quy Logistic, Rừng Ngẫu Nhiên (Random Forest) và Tăng cường Gradient (Gradient Boosting). Sau khi xây dựng và huấn luyện các mô hình này, chúng em sẽ tiến hành so sánh hiệu suất dự đoán của chúng trên tập dữ liệu đã được chuẩn bị. Cuối cùng, chúng em sẽ khám phá tiềm năng của việc kết hợp các mô hình này (phương pháp ensemble) nhằm mục đích nâng cao hơn nữa độ chính xác và tính ổn định của hệ thống dự đoán.
+
+## 4.1 Đọc dữ liệu
+  - Trong giai đoạn then chốt này, chúng em sẽ khởi đầu quá trình xây dựng các mô hình dự đoán bằng cách nhập tập dữ liệu đã được chuẩn bị kỹ lưỡng, vốn đã được lưu trữ trong tệp "heart_data_processed.csv". Tệp này chứa kết quả của các bước làm sạch, chuẩn hóa và xử lý các giá trị khuyết mà chúng em đã thực hiện trước đó.
+  - Sau khi dữ liệu được tải vào một DataFrame có tên gọi heart_data, chúng em sẽ tiến hành một số bước thăm dò ban đầu để có được cái nhìn tổng quan về cấu trúc và các đặc trưng của tập dữ liệu này. Cụ thể:
+    + Xem xét cấu trúc DataFrame: Hàm str(heart_data) sẽ được sử dụng để hiển thị một bản tóm tắt chi tiết về DataFrame, bao gồm tên của từng cột, kiểu dữ liệu tương ứng (ví dụ: số, nguyên, yếu tố), và một vài quan sát đầu tiên. Điều này giúp chúng em xác nhận rằng dữ liệu đã được đọc một cách chính xác và các kiểu dữ liệu đã được gán phù hợp.
+    + Thống kê mô tả sơ bộ: Hàm summary(heart_data) sẽ cung cấp các số liệu thống kê mô tả tóm tắt cho từng cột. Đối với các cột số, thông tin này bao gồm giá trị tối thiểu, giá trị tối đa, giá trị trung bình, trung vị và các phân vị. Đối với các cột yếu tố (nếu có), tần suất xuất hiện của từng hạng mục sẽ được hiển thị. Điều này cho phép chúng em đánh giá sự phân bố của dữ liệu trong từng thuộc tính.
+    + Kiểm tra giá trị khuyết: Cuối cùng, hàm sum(is.na(heart_data)) sẽ được sử dụng để đếm tổng số lượng giá trị bị thiếu (NA) trong toàn bộ DataFrame. Mặc dù chúng em đã thực hiện các biện pháp xử lý giá trị khuyết ở các giai đoạn trước, việc kiểm tra lại là một bước cần thiết để đảm bảo rằng không còn bất kỳ giá trị NA nào tồn tại trước khi chúng em tiến hành xây dựng các mô hình dự đoán.
+
+```{r}
+heart_data <- read.csv("data/heart.csv")
+
+# Kiểm tra cấu trúc dữ liệu
+str(heart_data)
+summary(heart_data)
+
+# Kiểm tra giá trị NA
+sum(is.na(heart_data))
+```
+
+## 4.2 Chuẩn bị dữ liệu cho mô hình
+  - Trong giai đoạn chuẩn bị dữ liệu cho quá trình mô hình hóa, chúng em sẽ thực hiện các điều chỉnh cần thiết để đảm bảo tính tương thích tối ưu với từng thuật toán dự đoán khác nhau. Nhận thấy rằng một số mô hình có yêu cầu riêng biệt về kiểu dữ liệu của biến mục tiêu, chúng em sẽ tiến hành các biến đổi cụ thể.
+  - Cụ thể, để đáp ứng đặc thù của mô hình Tăng cường Gradient (Gradient Boosting Machine - GBM), chúng em sẽ tạo một bản sao số hóa của biến mục tiêu (target). Cột mới này, với tên gọi target_numeric, sẽ lưu trữ các giá trị của biến target dưới dạng số. Lý do cho việc này là GBM thường đạt hiệu suất cao hơn khi biến mục tiêu trong bài toán phân loại nhị phân được biểu diễn bằng số.
+  - Mặt khác, đối với các mô hình khác mà chúng em dự định xây dựng, chẳng hạn như Hồi quy Logistic và Rừng Ngẫu Nhiên (Random Forest), biến mục tiêu thường được xử lý hiệu quả hơn khi ở dạng biến định tính (factor). Vì vậy, chúng em sẽ chuyển đổi cột target hiện tại sang kiểu factor. Điều này giúp các mô hình nhận diện rằng target biểu thị các nhóm hoặc lớp riêng biệt (trong trường hợp này là sự hiện diện hay vắng mặt của bệnh tim).
+  - Thông qua việc thực hiện những chuyển đổi này, chúng em đảm bảo rằng dữ liệu đã được định dạng một cách thích hợp cho từng loại mô hình cụ thể, từ đó tối đa hóa khả năng học hỏi và đưa ra dự đoán chính xác của chúng.
+
+```{r}
+# Lưu biến mục tiêu dưới dạng số cho GBM
+heart_data$target_numeric <- heart_data$target
+
+# Chuyển đổi biến mục tiêu thành yếu tố cho các mô hình khác
+heart_data$target <- as.factor(heart_data$target)
+```
+
+
+## 4.3 Khám phá dữ liệu
+  - Trong giai đoạn thăm dò dữ liệu này, chúng em sẽ đi sâu vào việc phân tích các đặc trưng của tập dữ liệu heart_data, tập trung vào việc làm rõ sự phân bố của biến mục tiêu và khám phá mối tương quan giữa một số thuộc tính quan trọng với khả năng mắc bệnh tim. Mục tiêu là xây dựng một hiểu biết trực quan về dữ liệu, từ đó định hướng cho quá trình xây dựng các mô hình dự đoán hiệu quả.
+  - Cụ thể, chúng em đã thực hiện các bước sau:
+    + Phân tích sự cân bằng của biến mục tiêu:
+      .Sử dụng hàm table(heart_data$target) để xác định số lượng mẫu thuộc mỗi lớp của biến mục tiêu (target), cho biết số lượng bệnh nhân có và không có bệnh tim trong tập dữ liệu.
+      . Sử dụng hàm prop.table(table(heart_data$target)) để tính toán tỷ lệ phần trăm của mỗi lớp trong biến mục tiêu, giúp chúng em đánh giá mức độ cân bằng giữa hai nhóm.
+    + Trực quan hóa mối quan hệ giữa các biến và biến mục tiêu:
+      . Thiết lập một khung hiển thị đồ họa 2x2 bằng hàm par(mfrow = c(2, 2)) để trình bày đồng thời bốn biểu đồ trên một trang.
+      . Phân bố tuổi: Vẽ biểu đồ histogram hist(heart_data$age, main = "Phân bố tuổi", xlab = "Tuổi") để minh họa tần suất xuất hiện của các độ tuổi trong tập dữ liệu.
+      . So sánh tuổi giữa các nhóm bệnh tim: Vẽ biểu đồ hộp boxplot(age ~ target, data = heart_data, main = "Tuổi theo nhóm bệnh tim") để so sánh phân vị và sự phân tán của tuổi giữa nhóm bệnh nhân có bệnh tim và nhóm không có bệnh tim.
+      . So sánh mức cholesterol giữa các nhóm bệnh tim: Vẽ biểu đồ hộp boxplot(chol ~ target, data = heart_data, main = "Cholesterol theo nhóm bệnh tim") để so sánh phân vị và sự phân tán của mức cholesterol giữa hai nhóm.
+So sánh nhịp tim tối đa giữa các nhóm bệnh tim: Vẽ biểu đồ hộp boxplot(thalach ~ target, data = heart_data, main = "Nhịp tim tối đa theo nhóm bệnh tim") để so sánh phân vị và sự phân tán của nhịp tim tối đa đạt được giữa hai nhóm.
+  - Thông qua việc phân tích các bảng thống kê và quan sát các biểu đồ, chúng em hy vọng sẽ thu được những nhận định ban đầu quan trọng về cấu trúc dữ liệu và mối liên hệ tiềm năng giữa các yếu tố đầu vào với khả năng mắc bệnh tim, từ đó làm cơ sở cho việc lựa chọn và xây dựng các mô hình dự đoán phù hợp.
+
+```{r}
+# Hiển thị phân bố của biến mục tiêu
+table(heart_data$target)
+prop.table(table(heart_data$target))
+
+# Biểu đồ phân bố một số biến quan trọng
+par(mfrow = c(2, 2))
+hist(heart_data$age, main = "Phân bố tuổi", xlab = "Tuổi")
+boxplot(age ~ target, data = heart_data, main = "Tuổi theo nhóm bệnh tim")
+boxplot(chol ~ target, data = heart_data, main = "Cholesterol theo nhóm bệnh tim")
+boxplot(thalach ~ target, data = heart_data, main = "Nhịp tim tối đa theo nhóm bệnh tim")
+```
+
+## 4.4 Chia dữ liệu thành tập huấn luyện và tập kiểm tra (80% - 20%)
+  - Để đánh giá một cách khách quan khả năng dự đoán của các mô hình mà chúng em sẽ xây dựng, một bước thiết yếu là phân tách tập dữ liệu heart_data thành hai bộ phận riêng biệt: tập huấn luyện (training set) và tập kiểm tra (testing set). Tập huấn luyện sẽ được sử dụng để "dạy" các mô hình, trong khi tập kiểm tra đóng vai trò là dữ liệu mới hoàn toàn, chỉ được sử dụng ở giai đoạn cuối để đo lường hiệu suất thực tế của mô hình.
+  - Trong nghiên cứu này, chúng em đã quyết định chia dữ liệu theo tỷ lệ 80% cho huấn luyện và 20% cho kiểm tra. Tỷ lệ này thường được ưu tiên để cung cấp đủ lượng dữ liệu cho mô hình học các mối quan hệ phức tạp, đồng thời vẫn duy trì một tập kiểm tra đủ lớn để đảm bảo đánh giá hiệu suất một cách đáng tin cậy.
+  - Quá trình phân chia này được thực hiện bằng cách sử dụng hàm createDataPartition() từ thư viện caret trong R, với các bước cụ thể như sau:
+    + Thiết lập tính tái lặp: Hàm set.seed(123) được sử dụng để khởi tạo bộ sinh số ngẫu nhiên với một giá trị cố định. Điều này đảm bảo rằng mỗi lần chạy đoạn mã này, quá trình phân chia dữ liệu sẽ tạo ra cùng một tập huấn luyện và tập kiểm tra, giúp chúng em có thể tái tạo chính xác các kết quả.
+    + Tạo chỉ mục phân chia: Hàm createDataPartition(heart_data$target, p = 0.8, list = FALSE) được sử dụng để tạo ra các chỉ số hàng cho tập huấn luyện. Tham số heart_data$target chỉ định biến mục tiêu mà dựa vào đó việc phân chia sẽ được thực hiện một cách cân đối (stratified sampling), đảm bảo tỷ lệ các lớp bệnh tim được duy trì tương đương giữa tập huấn luyện và kiểm tra. Tham số p = 0.8 xác định tỷ lệ dữ liệu (80%) sẽ được gán cho tập huấn luyện. Tham số list = FALSE đảm bảo kết quả trả về là một vector các chỉ số hàng.
+    + Tạo các tập dữ liệu: Dựa trên các chỉ số hàng đã tạo, chúng em đã tạo ra hai tập dữ liệu mới:
+    + train_data: Bao gồm 80% dữ liệu được chọn để huấn luyện các mô hình.
+test_data: Bao gồm 20% dữ liệu còn lại, được giữ lại để đánh giá hiệu suất cuối cùng của các mô hình trên dữ liệu chưa từng được "nhìn thấy".
+  - Cuối cùng, để xác minh rằng quá trình phân chia dữ liệu đã bảo toàn tỷ lệ các lớp của biến mục tiêu, chúng em đã sử dụng hàm table() trên cột target của cả train_data và test_data. Việc so sánh sự phân bố nhãn giữa hai tập dữ liệu này giúp chúng em đảm bảo rằng mô hình được huấn luyện trên một tập dữ liệu có sự cân bằng tương tự như tập dữ liệu được sử dụng để đánh giá.
+
+```{r}
+set.seed(123) # Đặt seed để kết quả có thể tái tạo
+train_index <- createDataPartition(heart_data$target, p = 0.8, list = FALSE)
+train_data <- heart_data[train_index, ]
+test_data <- heart_data[-train_index, ]
+
+# Kiểm tra phân phối nhãn sau khi chia tập dữ liệu
+table(train_data$target)
+table(test_data$target)
+```
+
+## 4.5 Xây dựng các mô hình
+  Trong giai đoạn này, chúng em sẽ tập trung vào việc phát triển và huấn luyện ba thuật toán dự đoán bệnh tim khác nhau trên tập dữ liệu huấn luyện (train_data) đã được chuẩn bị kỹ lưỡng. Các mô hình được lựa chọn bao gồm Hồi quy Logistic, Rừng Ngẫu Nhiên và Tăng cường Gradient.
+
+# 4.5.1 Mô hình Hồi quy Logistic
+  - Để xây dựng mô hình dự đoán đầu tiên, chúng em đã lựa chọn Hồi quy Logistic, một thuật toán phân loại tuyến tính mạnh mẽ thường được sử dụng để ước tính xác suất của một biến đầu ra nhị phân. Trong bối cảnh bài toán này, biến đầu ra nhị phân chính là khả năng mắc bệnh tim (có hoặc không). Chúng em đã triển khai mô hình Hồi quy Logistic bằng cách sử dụng hàm glm() trong ngôn ngữ R, với biến mục tiêu là target và tất cả các thuộc tính còn lại trong tập dữ liệu huấn luyện (train_data) được sử dụng làm các biến dự đoán. Tham số family = "binomial" đã được chỉ định để đảm bảo rằng mô hình được xây dựng phù hợp cho bài toán phân loại nhị phân.
+  - Sau khi mô hình được huấn luyện trên tập train_data, chúng em đã sử dụng hàm summary(log_model) để thu được bản tóm tắt chi tiết về mô hình đã huấn luyện. Bản tóm tắt này cung cấp các hệ số ước tính cho từng biến dự đoán, cùng với sai số chuẩn, giá trị thống kê z và giá trị p tương ứng. Những thông tin này cho phép chúng em đánh giá mức độ ảnh hưởng và ý nghĩa thống kê của từng thuộc tính trong việc dự đoán khả năng mắc bệnh tim.
+  - Tiếp theo, để đưa ra các dự đoán trên tập dữ liệu kiểm tra (test_data), chúng em đã sử dụng hàm predict(). Với tham số type = "response", hàm này trả về các xác suất dự đoán nằm trong khoảng từ 0 đến 1, biểu thị khả năng một đối tượng thuộc về lớp "có bệnh tim". Dựa trên các xác suất này, chúng em đã phân loại các đối tượng vào một trong hai lớp (0 hoặc 1) bằng cách áp dụng ngưỡng xác suất là 0.5. Nếu xác suất dự đoán vượt quá 0.5, đối tượng được dự đoán là có bệnh tim (lớp 1), ngược lại là không có bệnh tim (lớp 0). Để đảm bảo sự nhất quán về kiểu dữ liệu với biến mục tiêu trong tập test_data, các lớp dự đoán đã được chuyển đổi sang kiểu factor với các mức tương ứng.
+  - Cuối cùng, để đánh giá hiệu suất của mô hình Hồi quy Logistic trên tập test_data, chúng em đã sử dụng ma trận nhầm lẫn (confusion matrix) và đường cong Đặc tính Hoạt động của Máy thu (Receiver Operating Characteristic - ROC) cùng với diện tích dưới đường cong (Area Under the ROC Curve - AUC). Ma trận nhầm lẫn, được tạo bằng hàm confusionMatrix(), cung cấp một bảng tóm tắt về số lượng dự đoán đúng và sai cho mỗi lớp. Đường cong ROC và giá trị AUC, được tính toán bằng các hàm roc() và auc() từ thư viện pROC, là các thước đo quan trọng để đánh giá khả năng phân biệt giữa hai lớp của mô hình. Kết quả của ma trận nhầm lẫn đã được in ra để chúng em có thể phân tích các chỉ số hiệu suất như độ chính xác, độ nhạy, độ đặc hiệu và các chỉ số liên quan khác.
+
+```{r }
+log_model <- glm(target ~ age + sex + cp + trestbps + chol + fbs + restecg + 
+                 thalach + exang + oldpeak + slope + ca + thal, 
+                 data = train_data, family = "binomial")
+summary(log_model)
+
+# Dự đoán trên tập kiểm tra
+log_pred_prob <- predict(log_model, test_data, type = "response")
+log_pred_class <- ifelse(log_pred_prob > 0.5, 1, 0)
+log_pred_class <- factor(log_pred_class, levels = levels(test_data$target))
+
+# Đánh giá mô hình logistic
+log_cm <- confusionMatrix(log_pred_class, test_data$target)
+log_roc <- roc(as.numeric(test_data$target) - 1, log_pred_prob)
+log_auc <- auc(log_roc)
+print(log_cm)
+```
+
+# 4.5.2 Mô hình Random Forest
+  - Để tiếp tục quá trình xây dựng mô hình, chúng em đã triển khai thuật toán Rừng Ngẫu Nhiên (Random Forest), một phương pháp học ансамбль mạnh mẽ dựa trên việc tạo ra một tập hợp lớn các cây quyết định riêng lẻ và tổng hợp các dự đoán của chúng để đưa ra kết quả cuối cùng. Để thực hiện điều này, chúng em đã sử dụng hàm randomForest() từ thư viện randomForest trong R. Tương tự như mô hình Hồi quy Logistic, biến mục tiêu là target, và tất cả các thuộc tính còn lại trong tập huấn luyện (train_data) đã được sử dụng làm các biến đầu vào để dự đoán.
+  - Trong quá trình huấn luyện, chúng em đã thiết lập số lượng cây quyết định được xây dựng là 500 thông qua tham số ntree = 500. Việc sử dụng một số lượng lớn cây thường có xu hướng cải thiện độ ổn định và độ chính xác tổng thể của mô hình. Đồng thời, chúng em cũng kích hoạt tính năng đánh giá mức độ quan trọng của biến bằng cách đặt importance = TRUE, cho phép thuật toán ước tính mức độ đóng góp của từng thuộc tính vào khả năng dự đoán.
+  - Sau khi quá trình huấn luyện hoàn tất, chúng em đã in ra đối tượng rf_model để xem tóm tắt về cấu trúc và các thiết lập của mô hình. Tóm tắt này bao gồm thông tin về số lượng cây đã được tạo, số lượng biến được chọn ngẫu nhiên tại mỗi nút phân tách, và ước tính lỗi ngoại túi (out-of-bag error), một phương pháp nội tại để đánh giá hiệu suất của mô hình Rừng Ngẫu Nhiên trên dữ liệu huấn luyện.
+  - Tiếp theo, để tạo ra các dự đoán trên tập dữ liệu kiểm tra (test_data), chúng em đã sử dụng hàm predict(). Khi không có tham số type được chỉ định, hàm này mặc định trả về các lớp dự đoán trực tiếp (rf_pred_class). Thêm vào đó, chúng em cũng yêu cầu hàm trả về xác suất dự đoán cho từng lớp bằng cách sử dụng type = "prob". Do biến target là nhị phân, chúng em đặc biệt quan tâm đến xác suất mà một đối tượng thuộc về lớp "có bệnh tim", được trích xuất thông qua chỉ mục [,2].
+  - Cuối cùng, để đánh giá hiệu suất của mô hình Rừng Ngẫu Nhiên trên tập dữ liệu kiểm tra, chúng em đã sử dụng ma trận nhầm lẫn (confusion matrix) và đường cong Đặc tính Hoạt động của Máy thu (Receiver Operating Characteristic - ROC) cùng với diện tích dưới đường cong (Area Under the ROC Curve - AUC). Ma trận nhầm lẫn, được tạo bằng hàm confusionMatrix(), cung cấp thông tin chi tiết về số lượng các dự đoán đúng và sai. Đường cong ROC và giá trị AUC, được tính toán bằng các hàm roc() và auc() từ thư viện pROC, là các chỉ số quan trọng để đo lường khả năng phân biệt giữa hai lớp của mô hình. Kết quả của ma trận nhầm lẫn đã được in ra để chúng em có thể phân tích các chỉ số hiệu suất như độ chính xác, độ nhạy, độ đặc hiệu và các thước đo liên quan khác.
+
+```{r}
+rf_model <- randomForest(target ~ age + sex + cp + trestbps + chol + fbs + restecg + 
+                        thalach + exang + oldpeak + slope + ca + thal, 
+                        data = train_data, ntree = 500, importance = TRUE)
+print(rf_model)
+
+# Dự đoán trên tập kiểm tra
+rf_pred_class <- predict(rf_model, test_data)
+rf_pred_prob <- predict(rf_model, test_data, type = "prob")[,2]
+
+# Đánh giá mô hình Random Forest
+rf_cm <- confusionMatrix(rf_pred_class, test_data$target)
+rf_roc <- roc(as.numeric(test_data$target) - 1, rf_pred_prob)
+rf_auc <- auc(rf_roc)
+print(rf_cm)
+```
+
+# 4.5.3 Mô hình Gradient Boosting - Chú ý sử dụng biến target_numeric thay vì target
+  - Để tiếp tục quá trình xây dựng các mô hình dự đoán, chúng em đã triển khai thuật toán Tăng cường Gradient (Gradient Boosting), một kỹ thuật học ансамбль mạnh mẽ khác, hoạt động dựa trên nguyên tắc xây dựng một chuỗi các mô hình yếu, trong đó mỗi mô hình kế tiếp tập trung vào việc khắc phục những sai sót của mô hình trước đó. Để thực hiện điều này, chúng em đã sử dụng hàm gbm() từ thư viện gbm trong R. Một điểm quan trọng cần lưu ý là trong mô hình này, chúng em đã sử dụng biến mục tiêu ở dạng số target_numeric (được tạo ra ở bước 4.2) thay vì dạng factor của biến target. Lý do là thuật toán gbm thường cho hiệu suất tối ưu hơn khi làm việc với biến mục tiêu số trong các bài toán phân loại nhị phân. Các biến đầu vào để dự đoán vẫn là tất cả các thuộc tính còn lại trong tập dữ liệu huấn luyện (train_data).
+  - Trong quá trình huấn luyện mô hình gbm, chúng em đã thiết lập một số siêu tham số quan trọng:
+    + distribution = "bernoulli": Chỉ định rằng nhiệm vụ đang giải quyết là phân loại nhị phân.
+n.trees = 500: Xác định số lượng cây tuần tự (mô hình yếu) sẽ được xây dựng trong quá trình boosting.
+    + interaction.depth = 3: Quy định độ sâu tương tác tối đa giữa các biến trong mỗi cây, kiểm soát độ phức tạp của mô hình.
+    + shrinkage = 0.1: Đặt tốc độ học, một hệ số nhân được áp dụng cho trọng số của mỗi cây, giúp ngăn chặn overfitting.
+cv.folds = 5: Chỉ định số lượng phần (fold) được sử dụng trong quy trình kiểm định chéo (cross-validation) để đánh giá hiệu suất của mô hình trong quá trình huấn luyện và xác định số lượng cây tối ưu.
+    + n.cores = 1: Xác định số lượng lõi bộ xử lý được sử dụng cho các tác vụ tính toán (được đặt là 1 để đảm bảo tính nhất quán trong quá trình chạy).
+verbose = FALSE: Tắt các thông báo chi tiết trong quá trình huấn luyện để giữ cho đầu ra gọn gàng.
+    + Sau khi mô hình được huấn luyện, chúng em đã sử dụng hàm gbm.perf() để xác định số lượng cây tối ưu (best_iter) dựa trên kết quả của quá trình kiểm định chéo. Hàm này đánh giá hiệu suất của mô hình trên các phần khác nhau của dữ liệu huấn luyện và tìm ra số lượng cây mà tại đó hiệu suất trên tập kiểm định chéo là tốt nhất. Một biểu đồ thể hiện hiệu suất theo số lượng cây cũng được hiển thị (thông qua plot.it = TRUE). Giá trị của số lượng cây tối ưu này sau đó được in ra.
+  - Tiếp theo, để dự đoán khả năng mắc bệnh tim cho các đối tượng trong tập dữ liệu kiểm tra (test_data), chúng em đã sử dụng hàm predict(). Điều quan trọng là chúng em đã sử dụng số lượng cây tối ưu best_iter thông qua tham số n.trees = best_iter để đảm bảo rằng mô hình được sử dụng để dự đoán là mô hình có hiệu suất tốt nhất đã được tìm thấy. Tham số type = "response" yêu cầu hàm trả về các xác suất dự đoán nằm trong khoảng từ 0 đến 1. Dựa trên các xác suất này, chúng em đã chuyển đổi chúng thành các lớp dự đoán nhị phân (0 hoặc 1) bằng cách áp dụng ngưỡng 0.5, và sau đó chuyển đổi các lớp này thành kiểu factor với các mức tương ứng với biến mục tiêu trong tập test_data.
+  - Cuối cùng, để đánh giá hiệu suất của mô hình Tăng cường Gradient trên tập dữ liệu kiểm tra, chúng em đã sử dụng ma trận nhầm lẫn (confusion matrix) và đường cong Đặc tính Hoạt động của Máy thu (Receiver Operating Characteristic - ROC) cùng với diện tích dưới đường cong (Area Under the ROC Curve - AUC). Ma trận nhầm lẫn, được tạo bằng hàm confusionMatrix(), cung cấp thông tin chi tiết về số lượng các dự đoán đúng và sai. Đường cong ROC và giá trị AUC, được tính toán bằng các hàm roc() và auc() từ thư viện pROC, là các thước đo quan trọng để đánh giá khả năng phân biệt giữa hai lớp của mô hình. Kết quả của ma trận nhầm lẫn đã được in ra để chúng em có thể phân tích các chỉ số hiệu suất như độ chính xác, độ nhạy, độ đặc hiệu và các thước đo liên quan khác.
+
+```{r}
+gbm_model <- gbm(target_numeric ~ age + sex + cp + trestbps + chol + fbs + restecg + 
+                thalach + exang + oldpeak + slope + ca + thal, 
+                data = train_data,
+                distribution = "bernoulli",
+                n.trees = 500,
+                interaction.depth = 3,
+                shrinkage = 0.1,
+                cv.folds = 5,
+                n.cores = 1,
+                verbose = FALSE)
+#summary(gbm_model)
+
+# Tìm số lượng cây tối ưu dựa trên kết quả CV
+best_iter <- gbm.perf(gbm_model, method = "cv", plot.it = TRUE)
+print(paste("Số lượng cây tối ưu:", best_iter))
+
+# Dự đoán trên tập kiểm tra
+gbm_pred_prob <- predict(gbm_model, test_data, n.trees = best_iter, type = "response")
+gbm_pred_class <- ifelse(gbm_pred_prob > 0.5, 1, 0)
+gbm_pred_class <- factor(gbm_pred_class, levels = levels(test_data$target))
+
+# Đánh giá mô hình Gradient Boosting
+gbm_cm <- confusionMatrix(gbm_pred_class, test_data$target)
+gbm_roc <- roc(as.numeric(test_data$target) - 1, gbm_pred_prob)
+gbm_auc <- auc(gbm_roc)
+print(gbm_cm)
+```
+
+## 4.6 So sánh kết quả của ba mô hình
+  - Sau khi hoàn tất quá trình xây dựng và đánh giá hiệu suất của từng mô hình dự đoán bệnh tim riêng lẻ (Hồi quy Logistic, Rừng Ngẫu Nhiên và Tăng cường Gradient) trên tập dữ liệu kiểm tra, bước tiếp theo là tổng hợp và so sánh các kết quả thu được. Mục tiêu của việc này là xác định mô hình nào thể hiện khả năng dự đoán tốt nhất trên tập dữ liệu cụ thể này. Quá trình so sánh sẽ dựa trên một số chỉ số đo lường hiệu năng then chốt, bao gồm độ chính xác (Accuracy), độ nhạy (Sensitivity), độ đặc hiệu (Specificity) và diện tích dưới đường cong ROC (AUC).
+  - Để trực quan hóa sự khác biệt về hiệu suất giữa các mô hình, chúng em đã tạo một bảng so sánh tổng hợp với tên gọi models_comparison. Bảng này trình bày các hàng tương ứng với từng mô hình và các cột thể hiện các chỉ số đánh giá hiệu năng đã đề cập.
+  - Cụ thể, quy trình tạo bảng so sánh được thực hiện như sau:
+    + Khởi tạo một DataFrame mới (models_comparison) với các cột sau:
+      . Model: Chứa tên định danh của từng mô hình ("Logistic Regression", "Random Forest", "Gradient Boosting").
+      . Accuracy: Lưu trữ giá trị độ chính xác (tỷ lệ các dự đoán đúng trên tổng số các dự đoán) được trích xuất từ kết quả của hàm confusionMatrix() cho mỗi mô hình (log_cm$overall["Accuracy"], rf_cm$overall["Accuracy"], gbm_cm$overall["Accuracy"]).
+      . Sensitivity: Lưu trữ giá trị độ nhạy (tỷ lệ các trường hợp bệnh tim thực sự được mô hình dự đoán chính xác) được trích xuất từ kết quả của hàm confusionMatrix() cho mỗi mô hình (log_cm$byClass["Sensitivity"], rf_cm$byClass["Sensitivity"], gbm_cm$byClass["Sensitivity"]).
+      . Specificity: Lưu trữ giá trị độ đặc hiệu (tỷ lệ các trường hợp không mắc bệnh tim thực sự được mô hình dự đoán chính xác) được trích xuất từ kết quả của hàm confusionMatrix() cho mỗi mô hình (log_cm$byClass["Specificity"], rf_cm$byClass["Specificity"], gbm_cm$byClass["Specificity"]).
+      . AUC: Lưu trữ giá trị diện tích dưới đường cong ROC (Area Under the ROC Curve), một thước đo tổng thể về khả năng phân biệt giữa hai lớp của mô hình, được lưu trữ trong các biến log_auc, rf_auc, và gbm_auc sau khi đã tính toán đường cong ROC.
+  - Cuối cùng, chúng em đã in ra DataFrame models_comparison để hiển thị bảng so sánh hiệu năng của cả ba mô hình. Bảng này cho phép chúng em dễ dàng đối chiếu các chỉ số đánh giá và đưa ra những nhận xét có căn cứ về mô hình nào hoạt động hiệu quả nhất trên tập dữ liệu kiểm tra dựa trên các tiêu chí khác nhau. Ví dụ, một mô hình có thể đạt độ chính xác tổng thể cao nhưng lại có độ nhạy thấp, điều này có thể không phù hợp trong các ứng dụng y tế mà việc bỏ sót các trường hợp dương tính (bệnh nhân thực sự mắc bệnh) có thể dẫn đến hậu quả nghiêm trọng.
+
+```{r}
+# Tạo bảng so sánh
+models_comparison <- data.frame(
+  Model = c("Logistic Regression", "Random Forest", "Gradient Boosting"),
+  Accuracy = c(log_cm$overall["Accuracy"], 
+               rf_cm$overall["Accuracy"], 
+               gbm_cm$overall["Accuracy"]),
+  Sensitivity = c(log_cm$byClass["Sensitivity"], 
+                  rf_cm$byClass["Sensitivity"], 
+                  gbm_cm$byClass["Sensitivity"]),
+  Specificity = c(log_cm$byClass["Specificity"], 
+                  rf_cm$byClass["Specificity"], 
+                  gbm_cm$byClass["Specificity"]),
+  AUC = c(log_auc, rf_auc, gbm_auc)
+)
+
+print(models_comparison)
+```
+
+## 4.7 Vẽ đường cong ROC cho cả ba mô hình
+  - Để so sánh trực quan hiệu suất phân loại của ba mô hình đã xây dựng (Hồi quy Logistic, Rừng Ngẫu Nhiên và Tăng cường Gradient), chúng em đã sử dụng đường cong Đặc tính Hoạt động của Máy thu (Receiver Operating Characteristic - ROC). Đường cong này minh họa mối tương quan giữa tỷ lệ dương tính thực (True Positive Rate - độ nhạy) và tỷ lệ dương tính giả (False Positive Rate - 1 - độ đặc hiệu) tại nhiều ngưỡng phân loại khác nhau. Diện tích dưới đường cong ROC (AUC) là một chỉ số tổng hợp về khả năng phân biệt giữa hai lớp của mô hình, với giá trị càng gần 1 càng biểu thị hiệu suất tốt hơn.
+  - Chúng em đã áp dụng hai phương pháp để trực quan hóa đường cong ROC:
+    + Phương pháp 1: Sử dụng thư viện ggplot2 và ggroc
+      . Hàm ggroc() từ thư viện ggroc (thường đi kèm với pROC) được sử dụng để tạo một đối tượng biểu đồ ROC từ danh sách các đối tượng roc đã được tính toán cho từng mô hình (log_roc, rf_roc, gbm_roc), với nhãn tương ứng là "Logistic", "RandomForest" và "GradientBoosting".
+      . Giao diện biểu đồ được tinh giản bằng cách thêm theme_minimal() từ thư viện ggplot2.
+      . Tiêu đề biểu đồ được đặt là "So sánh các đường cong ROC" bằng hàm ggtitle().
+      . Một đường chéo nét đứt màu xám đậm (với hệ số chặn là 1 và hệ số góc là 1) được thêm vào bằng hàm geom_abline(), biểu thị hiệu suất của một bộ phân loại ngẫu nhiên. Các mô hình hiệu quả sẽ có đường cong ROC nằm càng xa đường này về phía góc trên bên trái càng tốt.
+      . Màu sắc của từng đường cong ROC được tùy chỉnh và chú thích được tạo bằng hàm scale_color_manual(). Màu xanh lam được gán cho Hồi quy Logistic, màu đỏ cho Rừng Ngẫu Nhiên và màu xanh lá cây cho Tăng cường Gradient. Nhãn chú thích bao gồm tên của từng mô hình kèm theo giá trị AUC tương ứng (đã được làm tròn đến ba chữ số thập phân).
+      . Tên của chú thích được đặt là "Mô hình" bằng hàm labs(color = "Mô hình").
+      . Cuối cùng, biểu đồ ROC đã tạo được hiển thị bằng hàm print(roc_plot).
+    + Phương pháp 2: Sử dụng biểu đồ cơ bản của R
+      . Đường cong ROC cho mô hình Hồi quy Logistic (log_roc) được vẽ đầu tiên bằng hàm plot() với màu xanh lam và tiêu đề "So sánh các đường cong ROC".
+      . Các đường cong ROC cho mô hình Rừng Ngẫu Nhiên (rf_roc) với màu đỏ và mô hình Tăng cường Gradient (gbm_roc) với màu xanh lá cây được vẽ chồng lên biểu đồ hiện có bằng cách sử dụng hàm plot() với tham số add = TRUE.
+      . Một chú thích được thêm vào góc dưới bên phải của biểu đồ bằng hàm legend(), bao gồm tên của từng mô hình kèm theo giá trị AUC tương ứng (đã được làm tròn đến ba chữ số thập phân), màu sắc đường cong tương ứng và độ dày đường (lwd = 2).
+  - Cả hai phương pháp này đều cung cấp một hình ảnh trực quan để so sánh khả năng phân loại của ba mô hình trên các ngưỡng khác nhau, đồng thời giá trị AUC đi kèm giúp đánh giá hiệu suất tổng thể của từng mô hình.
+
+```{r}
+roc_plot <- ggroc(list(Logistic = log_roc, RandomForest = rf_roc, GradientBoosting = gbm_roc)) +
+  theme_minimal() +
+  ggtitle("So sánh các đường cong ROC") +
+  geom_abline(intercept = 1, slope = 1, color = "darkgrey", linetype = "dashed") +
+  scale_color_manual(values = c("Logistic" = "blue", "RandomForest" = "red", "GradientBoosting" = "green"),
+                    labels = c(paste("Logistic (AUC =", round(log_auc, 3), ")"),
+                               paste("Random Forest (AUC =", round(rf_auc, 3), ")"),
+                               paste("Gradient Boosting (AUC =", round(gbm_auc, 3), ")"))) +
+  labs(color = "Mô hình")
+
+print(roc_plot)
+
+# Hoặc sử dụng base plot của R
+plot(log_roc, col = "blue", main = "So sánh các đường cong ROC")
+plot(rf_roc, col = "red", add = TRUE)
+plot(gbm_roc, col = "green", add = TRUE)
+legend("bottomright", 
+       legend = c(paste("Logistic (AUC =", round(log_auc, 3), ")"),
+                  paste("Random Forest (AUC =", round(rf_auc, 3), ")"),
+                  paste("Gradient Boosting (AUC =", round(gbm_auc, 3), ")")),
+       col = c("blue", "red", "green"),
+       lwd = 2)
+```
+
+## 4.8 Vẽ biểu đồ so sánh độ chính xác của các mô hình
+  - Để đơn giản hóa việc so sánh hiệu suất của ba mô hình dự đoán bệnh tim dựa trên tiêu chí độ chính xác, chúng em đã tạo ra một biểu đồ cột trực quan. Biểu đồ này thể hiện rõ ràng độ chính xác mà mỗi mô hình đạt được trên tập dữ liệu kiểm tra, cho phép đánh giá trực tiếp khả năng dự đoán đúng tổng thể của từng thuật toán.
+  - Quá trình xây dựng biểu đồ này được thực hiện bằng thư viện ggplot2 trong R, theo các bước sau:
+    + Khởi tạo biểu đồ bằng hàm ggplot(), sử dụng DataFrame models_comparison làm nguồn dữ liệu. Trục hoành (x) được gán cho tên của các mô hình (Model), được sắp xếp lại theo giá trị độ chính xác (Accuracy) bằng hàm reorder() để dễ dàng so sánh trực quan. Trục tung (y) biểu diễn giá trị độ chính xác (Accuracy), và màu sắc заливки (fill) của mỗi cột được xác định dựa trên tên mô hình (Model).
+    + Thêm các cột biểu thị độ chính xác bằng hàm geom_bar(stat = "identity"). Tham số stat = "identity" đảm bảo rằng chiều cao của mỗi cột tương ứng trực tiếp với giá trị độ chính xác của mô hình đó.
+    + Áp dụng giao diện tối giản cho biểu đồ bằng hàm theme_minimal().
+Thiết lập tiêu đề biểu đồ là "So sánh độ chính xác của các mô hình", nhãn trục tung là "Độ chính xác" và nhãn trục hoành là "Mô hình" bằng hàm labs().
+Hiển thị giá trị độ chính xác (đã làm tròn đến ba chữ số thập phân) trực tiếp trên đỉnh mỗi cột bằng hàm geom_text(), với tham số vjust = -0.5 để điều chỉnh vị trí văn bản nằm phía trên cột.
+    + Ẩn chú thích vì tên các mô hình đã được hiển thị rõ ràng trên trục hoành và màu sắc chỉ mang tính phân biệt trực quan bằng hàm theme(legend.position = "none").
+    + Đặt giới hạn cho trục tung từ 0 đến 1 bằng hàm ylim(0, 1), do độ chính xác là một giá trị nằm trong khoảng này.
+  - Biểu đồ cột kết quả cung cấp một phương tiện trực quan và dễ hiểu để so sánh hiệu suất dự đoán tổng thể (dựa trên độ chính xác) của mô hình Hồi quy Logistic, Rừng Ngẫu Nhiên và Tăng cường Gradient trên tập dữ liệu kiểm tra.
+
+```{r}
+ggplot(models_comparison, aes(x = reorder(Model, Accuracy), y = Accuracy, fill = Model)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "So sánh độ chính xác của các mô hình",
+       y = "Độ chính xác", 
+       x = "Mô hình") +
+  geom_text(aes(label = round(Accuracy, 3)), vjust = -0.5) +
+  theme(legend.position = "none") +
+  ylim(0, 1)
+```
+
+## 4.9 Tầm quan trọng của các biến
+  Để hiểu rõ hơn vai trò đóng góp của từng thuộc tính trong việc dự đoán nguy cơ mắc bệnh tim, đặc biệt là trong ngữ cảnh của mô hình Rừng Ngẫu Nhiên, chúng em đã tiến hành phân tích tầm quan trọng của các biến. Thuật toán Rừng Ngẫu Nhiên cung cấp một cơ chế nội tại để ước tính mức độ ảnh hưởng của mỗi thuộc tính đến hiệu suất dự đoán của mô hình.
+
+# 4.9.1 Trong Random Forest
+  - Để xác định mức độ quan trọng của từng thuộc tính trong mô hình Rừng Ngẫu Nhiên (rf_model) đã được xây dựng, chúng em đã sử dụng hàm importance() từ thư viện randomForest. Hàm này trả về một ma trận chứa các chỉ số đo lường tầm quan trọng của mỗi biến, dựa trên mức độ suy giảm độ chính xác của mô hình khi loại bỏ thuộc tính đó (thông qua Mean Decrease Accuracy) và tổng mức giảm độ tinh khiết của các nút cây khi sử dụng thuộc tính đó để phân tách (thông qua Mean Decrease Gini). Kết quả này được lưu trữ trong biến importance_rf.
+  - Tiếp theo, để trực quan hóa những kết quả này, chúng em đã sử dụng hàm varImpPlot() từ cùng thư viện. Hàm này tạo ra một biểu đồ cột, trong đó chiều cao của mỗi cột tương ứng với mức độ quan trọng của một thuộc tính. Các thuộc tính thường được sắp xếp theo thứ tự giảm dần của một trong các chỉ số quan trọng (thường là Mean Decrease Accuracy). Biểu đồ này giúp chúng em dễ dàng nhận diện những thuộc tính nào có tác động lớn nhất đến khả năng dự đoán của mô hình Rừng Ngẫu Nhiên. Tiêu đề của biểu đồ được đặt là "Tầm quan trọng của các biến trong Random Forest" để đảm bảo rõ ràng về nội dung hiển thị.
+  - Thông qua việc quan sát biểu đồ này, chúng em có thể xác định được những yếu tố nào đóng vai trò then chốt trong việc phân loại bệnh tim theo quan điểm của mô hình Rừng Ngẫu Nhiên. Điều này có thể cung cấp những hiểu biết giá trị về các yếu tố nguy cơ tiềm ẩn và giúp tập trung vào các thuộc tính quan trọng nhất trong các phân tích chuyên sâu hơn hoặc trong việc thu thập dữ liệu cho các nghiên cứu tương lai.
+
+```{r }
+importance_rf <- importance(rf_model)
+varImpPlot(rf_model, main = "Tầm quan trọng của các biến trong Random Forest")
+```
+
+# 4.9.2 Trong Gradient Boosting
+  - Tương tự như phân tích tầm quan trọng của biến trong mô hình Rừng Ngẫu Nhiên, việc xem xét mức độ ảnh hưởng của từng thuộc tính trong mô hình Tăng cường Gradient cũng mang lại những hiểu biết giá trị về quá trình dự đoán. Thuật toán Tăng cường Gradient cung cấp một cơ chế để ước tính mức độ đóng góp của mỗi thuộc tính vào việc giảm thiểu sai số trong quá trình huấn luyện mô hình.
+  - Để xác định mức độ ảnh hưởng của các thuộc tính trong mô hình Tăng cường Gradient (gbm_model) đã được huấn luyện (sử dụng số lượng cây tối ưu best_iter), chúng em đã sử dụng hàm summary() từ thư viện gbm. Khi được gọi với tham số plotit = TRUE, hàm này sẽ tự động tạo ra một biểu đồ cột trực quan hóa mức độ ảnh hưởng tương đối của từng thuộc tính. Đồng thời, hàm summary() cũng trả về một ma trận chứa tên của thuộc tính và giá trị ảnh hưởng tương đối tương ứng. Kết quả này được lưu trữ trong biến importance_gbm.
+  - Để tận dụng khả năng tùy chỉnh biểu đồ của thư viện ggplot2, chúng em đã chuyển đổi ma trận importance_gbm thành một DataFrame có tên importance_gbm_df. Hai cột của DataFrame này được đặt tên lần lượt là "Variable" (Thuộc tính) và "Relative_Influence" (Mức độ ảnh hưởng tương đối).
+  - Sau đó, chúng em đã sử dụng ggplot2 để tạo biểu đồ cột thể hiện mức độ ảnh hưởng của các thuộc tính:
+    + Khởi tạo biểu đồ bằng hàm ggplot(), sử dụng DataFrame importance_gbm_df làm dữ liệu đầu vào. Trục hoành (x) được gán cho tên của các thuộc tính (Variable), được sắp xếp lại dựa trên giá trị mức độ ảnh hưởng tương đối (Relative_Influence) bằng hàm reorder(). Trục tung (y) biểu diễn giá trị mức độ ảnh hưởng tương đối (Relative_Influence).
+    + Thêm các cột biểu thị mức độ ảnh hưởng tương đối của mỗi thuộc tính bằng hàm geom_bar(stat = "identity", fill = "skyblue"), với màu xanh da trời. Tham số stat = "identity" đảm bảo chiều cao của mỗi cột tương ứng trực tiếp với giá trị ảnh hưởng.
+    + Sử dụng hàm coord_flip() để xoay biểu đồ, hiển thị các cột theo chiều ngang, giúp việc đọc tên các thuộc tính dài trở nên thuận tiện hơn.
+    + Áp dụng giao diện tối giản cho biểu đồ bằng hàm theme_minimal().
+    + Đặt tiêu đề cho biểu đồ là "Tầm quan trọng của các biến trong Gradient Boosting", nhãn trục hoành là "Biến" và nhãn trục tung là "Ảnh hưởng tương đối" bằng hàm labs().
+  - Biểu đồ cột kết quả cung cấp một phương tiện trực quan để so sánh mức độ đóng góp của từng thuộc tính trong mô hình Tăng cường Gradient, làm sáng tỏ những yếu tố nào có vai trò then chốt trong việc đưa ra dự đoán cuối cùng.
+
+```{r }
+importance_gbm <- summary(gbm_model, n.trees = best_iter, plotit = TRUE)
+importance_gbm_df <- as.data.frame(importance_gbm)
+colnames(importance_gbm_df) <- c("Variable", "Relative_Influence")
+
+ggplot(importance_gbm_df, aes(x = reorder(Variable, Relative_Influence), y = Relative_Influence)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Tầm quan trọng của các biến trong Gradient Boosting",
+       x = "Biến",
+       y = "Ảnh hưởng tương đối")
+```
+
+## 4.10 Lưu mô hình để sử dụng sau này
+  - Sau khi hoàn tất quá trình xây dựng và huấn luyện thành công ba mô hình dự đoán bệnh tim (Hồi quy Logistic, Rừng Ngẫu Nhiên và Tăng cường Gradient), một bước quan trọng để tận dụng các mô hình này trong tương lai mà không cần thực hiện lại quá trình huấn luyện tốn kém là lưu trữ chúng vào các tệp tin riêng biệt. Hành động này đặc biệt hữu ích khi muốn triển khai mô hình vào các ứng dụng thực tế, tiến hành dự đoán trên dữ liệu mới, hoặc tiếp tục phân tích và so sánh hiệu suất sau này.
+  - Để thực hiện việc này trong môi trường R, chúng em đã sử dụng hàm saveRDS(). Hàm này cho phép chúng em lưu trữ một đối tượng R duy nhất (trong trường hợp này là các đối tượng mô hình đã được huấn luyện) vào một tệp tin có định dạng RDS. Đây là một định dạng nhị phân đặc trưng của R, được tối ưu hóa để lưu trữ hiệu quả các đối tượng phức tạp.
+  - Cụ thể, chúng em đã tiến hành lưu trữ như sau:
+    + Mô hình Hồi quy Logistic (log_model) đã được bảo quản vào tệp "logistic_model.rds" trong thư mục "model" thông qua lệnh saveRDS(log_model, "model/logistic_model.rds").
+    + Mô hình Rừng Ngẫu Nhiên (rf_model) đã được lưu trữ vào tệp "random_forest_model.rds" trong cùng thư mục bằng lệnh saveRDS(rf_model, "model/random_forest_model.rds").
+    + Mô hình Tăng cường Gradient (gbm_model) cũng đã được lưu vào tệp "gradient_boosting_model.rds" trong thư mục "model" bằng lệnh saveRDS(gbm_model, "model/gradient_boosting_model.rds").
+  - Việc lưu trữ các mô hình này cho phép chúng em dễ dàng tải lại chúng vào phiên làm việc R bất kỳ lúc nào trong tương lai bằng cách sử dụng hàm readRDS(). Điều này giúp chúng em tiếp tục làm việc với các mô hình đã huấn luyện mà không cần phải chạy lại toàn bộ quy trình huấn luyện, tiết kiệm đáng kể thời gian và tài nguyên tính toán. Việc tổ chức các tệp mô hình trong thư mục "model" cũng giúp duy trì cấu trúc dự án một cách khoa học và dễ quản lý.
+
+```{r }
+saveRDS(log_model, "model/logistic_model.rds")
+saveRDS(rf_model, "model/random_forest_model.rds")
+saveRDS(gbm_model, "model/gradient_boosting_model.rds")
+```
+
+## 4.11 Kết hợp các dự đoán để tăng hiệu suất (ensemble)
+  - Để khai thác sức mạnh tổng hợp từ các mô hình đã được huấn luyện và hướng tới việc nâng cao khả năng dự đoán, chúng em đã khám phá một kỹ thuật kết hợp mô hình (ensemble) đơn giản. Nguyên tắc cốt lõi của phương pháp này là tổng hợp các dự đoán từ nhiều mô hình khác nhau để tạo ra một dự đoán cuối cùng, với kỳ vọng đạt được độ chính xác và tính ổn định cao hơn so với bất kỳ mô hình riêng lẻ nào.
+  - Trong nghiên cứu này, chúng em đã thực hiện một chiến lược ensemble bằng cách tính trung bình các xác suất dự đoán do ba mô hình đã xây dựng cung cấp: Hồi quy Logistic (log_pred_prob), Rừng Ngẫu Nhiên (rf_pred_prob) và Tăng cường Gradient (gbm_pred_prob).
+  - Các bước triển khai cụ thể như sau:
+    + Tính toán xác suất trung bình: Đối với mỗi mẫu trong tập kiểm tra, các xác suất dự đoán từ ba mô hình được cộng lại và chia cho ba để tạo ra một xác suất dự đoán tổng hợp (ensemble_pred_prob).
+    + Phân loại dựa trên ngưỡng: Tương tự như quy trình với các mô hình riêng lẻ, các xác suất tổng hợp này sau đó được chuyển đổi thành các nhãn lớp nhị phân (0 hoặc 1) bằng cách áp dụng ngưỡng 0.5. Nếu xác suất tổng hợp vượt quá 0.5, mẫu được dự đoán là có bệnh tim (lớp 1), ngược lại là không có bệnh tim (lớp 0). Các nhãn lớp tổng hợp (ensemble_pred_class) sau đó được chuyển đổi sang kiểu factor để đảm bảo nhất quán với biến mục tiêu trong tập test_data.
+Đánh giá hiệu suất mô hình kết hợp: Hiệu suất của mô hình ensemble trên tập kiểm tra được đánh giá bằng cách sử dụng ma trận nhầm lẫn (ensemble_cm) và đường cong ROC cùng với giá trị AUC (ensemble_auc), tuân theo phương pháp đánh giá đã áp dụng cho các mô hình riêng lẻ.
+    + Bổ sung vào bảng so sánh: Các chỉ số hiệu suất của mô hình ensemble (độ chính xác, độ nhạy, độ đặc hiệu và AUC) được thêm vào cuối bảng so sánh models_comparison để tạo điều kiện so sánh trực tiếp với hiệu suất của từng mô hình thành phần.
+    + Cập nhật biểu đồ ROC: Đường cong ROC của mô hình ensemble (ensemble_roc) cũng được vẽ lên cùng biểu đồ ROC của các mô hình riêng lẻ (sử dụng màu tím) để cung cấp một cái nhìn trực quan về khả năng phân loại. Chú thích của biểu đồ cũng được cập nhật để bao gồm mô hình ensemble và giá trị AUC tương ứng của nó.
+  - Kết quả cho thấy rằng hiệu suất của mô hình ensemble có tiềm năng vượt trội hoặc ít nhất là tương đương với hiệu suất của các mô hình tốt nhất trong số các mô hình riêng lẻ, minh chứng cho lợi ích của việc kết hợp các dự đoán từ các mô hình khác nhau để tăng cường độ tin cậy và độ chính xác của hệ thống dự đoán.
+
+```{r }
+# Tạo một mô hình ensemble đơn giản bằng cách lấy trung bình xác suất
+ensemble_pred_prob <- (log_pred_prob + rf_pred_prob + gbm_pred_prob) / 3
+ensemble_pred_class <- ifelse(ensemble_pred_prob > 0.5, 1, 0)
+ensemble_pred_class <- factor(ensemble_pred_class, levels = levels(test_data$target))
+
+# Đánh giá mô hình ensemble
+ensemble_cm <- confusionMatrix(ensemble_pred_class, test_data$target)
+ensemble_roc <- roc(as.numeric(test_data$target) - 1, ensemble_pred_prob)
+ensemble_auc <- auc(ensemble_roc)
+
+# Thêm vào bảng so sánh
+models_comparison <- rbind(models_comparison,
+                          c("Ensemble", 
+                            ensemble_cm$overall["Accuracy"],
+                            ensemble_cm$byClass["Sensitivity"],
+                            ensemble_cm$byClass["Specificity"],
+                            ensemble_auc))
+
+print(models_comparison)
+
+# Cập nhật biểu đồ ROC với mô hình ensemble
+plot(log_roc, col = "blue", main = "So sánh các đường cong ROC")
+plot(rf_roc, col = "red", add = TRUE)
+plot(gbm_roc, col = "green", add = TRUE)
+plot(ensemble_roc, col = "purple", add = TRUE)
+legend("bottomright", 
+       legend = c(paste("Logistic (AUC =", round(log_auc, 3), ")"),
+                  paste("Random Forest (AUC =", round(rf_auc, 3), ")"),
+                  paste("Gradient Boosting (AUC =", round(gbm_auc, 3), ")"),
+                  paste("Ensemble (AUC =", round(ensemble_auc, 3), ")")),
+       col = c("blue", "red", "green", "purple"),
+       lwd = 2)
+```
