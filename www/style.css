@@ -1,0 +1,152 @@
+/* Màu sắc và kiểu chữ cơ bản */
+body {
+  font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+  background-color: #f8f9fa;
+}
+
+/* Màu sắc header */
+.skin-blue .main-header .logo {
+  background-color: #1e88e5;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.skin-blue .main-header .logo:hover {
+  background-color: #1976d2;
+}
+
+.skin-blue .main-header .navbar {
+  background-color: #1e88e5;
+}
+
+/* Màu sidebar */
+.skin-blue .main-sidebar .sidebar-menu>li.active>a {
+  border-left-color: #ffc107;
+}
+
+/* Màu các box */
+.box.box-primary {
+  border-top-color: #1e88e5;
+}
+
+.box.box-warning {
+  border-top-color: #ffc107;
+}
+
+.box.box-success {
+  border-top-color: #4caf50;
+}
+
+.box.box-info {
+  border-top-color: #00bcd4;
+}
+
+/* Value boxes */
+.value-box {
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.bg-green {
+  background-color: #4caf50 !important;
+}
+
+.bg-yellow {
+  background-color: #ffc107 !important;
+}
+
+.bg-red {
+  background-color: #f44336 !important;
+}
+
+/* Nút */
+.btn-success {
+  background-color: #4caf50;
+  border-color: #43a047;
+}
+
+.btn-success:hover {
+  background-color: #388e3c;
+  border-color: #2e7d32;
+}
+
+/* Form inputs */
+.form-control {
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.form-control:focus {
+  border-color: #1e88e5;
+  box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25);
+}
+
+/* Custom styles */
+.help-button {
+  margin-left: 8px;
+  padding: 2px 6px;
+}
+
+.input-with-help {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.risk-explanation {
+  background-color: #f5f5f5;
+  border-left: 4px solid #1e88e5;
+  padding: 10px 15px;
+  margin-top: 20px;
+  border-radius: 0 4px 4px 0;
+}
+
+.recommendations {
+  background-color: #e8f5e9;
+  border-left: 4px solid #4caf50;
+  padding: 15px;
+  margin: 20px 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.detailed-explanation {
+  line-height: 1.6;
+}
+
+.detailed-explanation h3 {
+  color: #1976d2;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+.detailed-explanation h4 {
+  color: #2196f3;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.detailed-explanation ul {
+  padding-left: 20px;
+}
+
+.detailed-explanation li {
+  margin-bottom: 10px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .box {
+    margin-bottom: 10px;
+  }
+  
+  .input-with-help {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .help-button {
+    margin-left: 0;
+    margin-top: 5px;
+  }
+}

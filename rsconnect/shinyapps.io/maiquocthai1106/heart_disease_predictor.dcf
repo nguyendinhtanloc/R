@@ -1,0 +1,10 @@
+name: heart_disease_predictor
+title:
+username: maiquocthai1106
+account: maiquocthai1106
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14725092
+bundleId: 10259877
+url: https://maiquocthai1106.shinyapps.io/heart_disease_predictor/
+version: 1
